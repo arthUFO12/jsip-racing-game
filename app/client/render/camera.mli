@@ -37,3 +37,9 @@ val cell_origin_px : t -> Cell.t -> int * int
 (** Pixel location of a continuous world position — where a car actually is,
     sub-cell offset and all. *)
 val world_px : t -> Position.t -> int * int
+
+(** Inverse of {!cell_origin_px}: the grid cell a window pixel falls in — used
+    for click-to-target on the whole-map console. Pixels below or left of
+    [origin] come back with negative indices, so callers can bounds-check
+    against the grid. *)
+val cell_of_px : t -> x:int -> y:int -> Cell.t

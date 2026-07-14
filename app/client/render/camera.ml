@@ -43,3 +43,13 @@ let world_px t (pos : Position.t) =
   ( px t.ox (cells_from_origin pos.x t.origin_col)
   , px t.oy (cells_from_origin pos.y t.origin_row) )
 ;;
+
+let cell_of_px t ~x ~y =
+  (* Floor division (not OCaml's truncate-toward-zero [/]) so a pixel just
+     below or left of [origin] gives a negative index the caller rejects,
+     rather than folding onto cell 0. *)
+  let floor_div a b = if a >= 0 then a / b else -(((-a) + b - 1) / b) in
+  { Cell.col = t.origin_col + floor_div (x - t.ox) t.cell_px
+  ; row = t.origin_row + floor_div (y - t.oy) t.cell_px
+  }
+;;

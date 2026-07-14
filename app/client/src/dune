@@ -9,6 +9,7 @@
   racing_types
   racing_map
   racing_gateway
-  jsip_client_render)
+  jsip_client_render
+  jsip_client_track_view)
  (preprocess
   (pps ppx_jane)))

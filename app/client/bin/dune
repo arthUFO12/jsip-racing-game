@@ -6,6 +6,7 @@
   graphics
   jsip_client
   jsip_client_render
+  jsip_client_track_view
   racing_types
   racing_map
   racing_gateway

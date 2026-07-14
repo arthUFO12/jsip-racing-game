@@ -1,31 +1,16 @@
 open! Core
 open Racing_types
 
-module Driver = struct
-  (* The throttle latch is the whole point (see controls.mli): W presses turn
-     [accelerate] on, S presses turn it off. Steering is read live each frame
-     — one held steer key at a time is what X11 auto-repeat can actually
-     track. *)
-  type t =
-    { input : Input.t
-    ; accelerate : bool ref
-    }
-
-  let create input =
-    let accelerate = ref false in
-    Input.on_keypress input Input.Key.W ~f:(fun () -> accelerate := true);
-    Input.on_keypress input Input.Key.S ~f:(fun () -> accelerate := false);
-    { input; accelerate }
-  ;;
-
-  let input t =
-    { Driver_input.accelerate = !(t.accelerate)
-    ; brake = Input.is_pressed t.input Input.Key.S
-    ; steer_left = Input.is_pressed t.input Input.Key.A
-    ; steer_right = Input.is_pressed t.input Input.Key.D
-    }
-  ;;
-end
+(* Standard hold-to-move WASD: read each key's live held-state. Simultaneous
+   accelerate-and-steer works because {!Input.is_pressed} keeps a held throttle
+   (W/S) alive while a steering key (A/D) has the OS auto-repeat. *)
+let driver_input input =
+  { Driver_input.accelerate = Input.is_pressed input Input.Key.W
+  ; brake = Input.is_pressed input Input.Key.S
+  ; steer_left = Input.is_pressed input Input.Key.A
+  ; steer_right = Input.is_pressed input Input.Key.D
+  }
+;;
 
 (* Digit [n] selects inventory slot [n - 1] (slots are shown to the player
    1-indexed). [digit < 1] — including the reserved [0] — selects nothing, and

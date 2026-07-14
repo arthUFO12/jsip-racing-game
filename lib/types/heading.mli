@@ -13,9 +13,9 @@ open! Core
       (* = Float.pi *)
     ]}
 
-    ([bin_io] is a machine format for RPC transport and skips
-    normalization; headings only travel server-to-client, so every heading
-    on the wire was normalized when the server constructed it.) *)
+    ([bin_io] is a machine format for RPC transport and skips normalization;
+    headings only travel server-to-client, so every heading on the wire was
+    normalized when the server constructed it.) *)
 
 type t [@@deriving bin_io, compare, equal, sexp_of]
 

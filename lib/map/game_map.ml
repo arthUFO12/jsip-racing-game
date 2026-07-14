@@ -6,8 +6,8 @@ type t =
   ; laps_to_win : int
   ; cell_size : float
   ; surfaces : Surface.t array array
-  (* [surfaces.(row).(col)]; row 0 is the BOTTOM row (y-up). Map files
-     list rows top-first for readability; [load] flips them. *)
+      (* [surfaces.(row).(col)]; row 0 is the BOTTOM row (y-up). Map files
+         list rows top-first for readability; [load] flips them. *)
   ; environments : Environment.t array array
   ; checkpoints : Checkpoint.t array
   ; start_grid : Pose.t list
@@ -15,9 +15,9 @@ type t =
   }
 [@@deriving sexp_of, bin_io]
 
-(* The authoring schema (doc/map-design.md): grids are row lists written
-   TOP row first (human reading order); features are kind + footprint,
-   with no ids and no phases. *)
+(* The authoring schema (doc/map-design.md): grids are row lists written TOP
+   row first (human reading order); features are kind + footprint, with no
+   ids and no phases. *)
 module Spec = struct
   module Feature_spec = struct
     type t =
@@ -40,8 +40,8 @@ module Spec = struct
   [@@deriving of_sexp]
 end
 
-(* Rows are listed top-first in the file; internally row 0 is the BOTTOM
-   row, so reverse while converting. *)
+(* Rows are listed top-first in the file; internally row 0 is the BOTTOM row,
+   so reverse while converting. *)
 let grid_of_rows rows = Array.of_list_rev (List.map rows ~f:Array.of_list)
 
 let in_grid (cell : Cell.t) ~rows ~cols =
@@ -49,21 +49,24 @@ let in_grid (cell : Cell.t) ~rows ~cols =
 ;;
 
 let sorted_checkpoints checkpoints =
-  List.sort checkpoints ~compare:(fun (a : Checkpoint.t) (b : Checkpoint.t) ->
-    Int.compare a.index b.index)
+  List.sort
+    checkpoints
+    ~compare:(fun (a : Checkpoint.t) (b : Checkpoint.t) ->
+      Int.compare a.index b.index)
 ;;
 
 (* {2 Shape checks}
 
-   Everything that must hold before the semantic checks below can index
-   the grids and pair up checkpoints without crashing. Each check returns
-   a (possibly empty) list of errors so [load] can report ALL problems at
-   once. *)
+   Everything that must hold before the semantic checks below can index the
+   grids and pair up checkpoints without crashing. Each check returns a
+   (possibly empty) list of errors so [load] can report ALL problems at once. *)
 
 let grid_shape_errors ~grid_name grid =
   match grid with
   | [] ->
-    [ Or_error.error_s [%message "grid must be nonempty" (grid_name : string)] ]
+    [ Or_error.error_s
+        [%message "grid must be nonempty" (grid_name : string)]
+    ]
   | first_row :: _ ->
     let expected_cols = List.length first_row in
     List.filter_mapi grid ~f:(fun row_from_top row ->
@@ -116,7 +119,8 @@ let grid_dims_errors ~surfaces ~environments =
 
 let checkpoint_index_errors (checkpoints : Checkpoint.t list) =
   let indexes =
-    List.map checkpoints ~f:(fun (checkpoint : Checkpoint.t) -> checkpoint.index)
+    List.map checkpoints ~f:(fun (checkpoint : Checkpoint.t) ->
+      checkpoint.index)
     |> List.sort ~compare:Int.compare
   in
   let checkpoint_count = List.length indexes in
@@ -130,26 +134,34 @@ let checkpoint_index_errors (checkpoints : Checkpoint.t list) =
       ]
   in
   let index_errors =
-    match List.equal Int.equal indexes (List.init checkpoint_count ~f:Fn.id) with
+    match
+      List.equal Int.equal indexes (List.init checkpoint_count ~f:Fn.id)
+    with
     | true -> []
     | false ->
       [ Or_error.error_s
           [%message
-            "checkpoint indexes must be exactly 0 .. n-1 (no duplicates or gaps)"
+            "checkpoint indexes must be exactly 0 .. n-1 (no duplicates or \
+             gaps)"
               (indexes : int list)]
       ]
   in
   count_errors @ index_errors
 ;;
 
-let checkpoint_cell_shape_errors (checkpoints : Checkpoint.t list) ~rows ~cols =
+let checkpoint_cell_shape_errors
+  (checkpoints : Checkpoint.t list)
+  ~rows
+  ~cols
+  =
   List.concat_map checkpoints ~f:(fun (checkpoint : Checkpoint.t) ->
     let index = checkpoint.index in
     let empty_errors =
       match checkpoint.cells with
       | _ :: _ -> []
       | [] ->
-        [ Or_error.error_s [%message "checkpoint has no cells" (index : int)] ]
+        [ Or_error.error_s [%message "checkpoint has no cells" (index : int)]
+        ]
     in
     let bounds_errors =
       List.filter_map checkpoint.cells ~f:(fun cell ->
@@ -169,35 +181,37 @@ let checkpoint_cell_shape_errors (checkpoints : Checkpoint.t list) ~rows ~cols =
 ;;
 
 let feature_shape_errors (features : Spec.Feature_spec.t list) ~rows ~cols =
-  List.concat_mapi features ~f:(fun feature_index (feature : Spec.Feature_spec.t) ->
-    let kind = feature.kind in
-    let empty_errors =
-      match feature.cells with
-      | _ :: _ -> []
-      | [] ->
-        [ Or_error.error_s
-            [%message
-              "feature footprint must be nonempty"
-                (feature_index : int)
-                (kind : Feature.Kind.t)]
-        ]
-    in
-    let bounds_errors =
-      List.filter_map feature.cells ~f:(fun cell ->
-        match in_grid cell ~rows ~cols with
-        | true -> None
-        | false ->
-          Some
-            (Or_error.error_s
-               [%message
-                 "feature cell is out of bounds"
-                   (feature_index : int)
-                   (kind : Feature.Kind.t)
-                   (cell : Cell.t)
-                   (rows : int)
-                   (cols : int)]))
-    in
-    empty_errors @ bounds_errors)
+  List.concat_mapi
+    features
+    ~f:(fun feature_index (feature : Spec.Feature_spec.t) ->
+      let kind = feature.kind in
+      let empty_errors =
+        match feature.cells with
+        | _ :: _ -> []
+        | [] ->
+          [ Or_error.error_s
+              [%message
+                "feature footprint must be nonempty"
+                  (feature_index : int)
+                  (kind : Feature.Kind.t)]
+          ]
+      in
+      let bounds_errors =
+        List.filter_map feature.cells ~f:(fun cell ->
+          match in_grid cell ~rows ~cols with
+          | true -> None
+          | false ->
+            Some
+              (Or_error.error_s
+                 [%message
+                   "feature cell is out of bounds"
+                     (feature_index : int)
+                     (kind : Feature.Kind.t)
+                     (cell : Cell.t)
+                     (rows : int)
+                     (cols : int)]))
+      in
+      empty_errors @ bounds_errors)
 ;;
 
 let shape_errors (spec : Spec.t) ~rows ~cols =
@@ -231,9 +245,9 @@ let shape_errors (spec : Spec.t) ~rows ~cols =
 
 (* {2 Semantic checks}
 
-   Only run once the shape checks pass, so grid indexing, checkpoint
-   pairing, and [Cell.of_position] are all safe. [surfaces]/[environments]
-   are the flipped internal arrays (row 0 = bottom). *)
+   Only run once the shape checks pass, so grid indexing, checkpoint pairing,
+   and [Cell.of_position] are all safe. [surfaces]/[environments] are the
+   flipped internal arrays (row 0 = bottom). *)
 
 let semantic_errors (spec : Spec.t) ~surfaces ~environments ~rows ~cols =
   let surface_at (cell : Cell.t) =
@@ -332,7 +346,12 @@ let semantic_errors (spec : Spec.t) ~surfaces ~environments ~rows ~cols =
       List.foldi
         spec.features
         ~init:(Cell.Set.empty, [])
-        ~f:(fun feature_index (claimed, errors) (feature : Spec.Feature_spec.t) ->
+        ~f:
+          (fun
+            feature_index
+            (claimed, errors)
+            (feature : Spec.Feature_spec.t)
+          ->
           List.fold
             feature.cells
             ~init:(claimed, errors)
@@ -353,9 +372,9 @@ let semantic_errors (spec : Spec.t) ~surfaces ~environments ~rows ~cols =
     List.rev errors
   in
   let reachability_errors =
-    (* Worst-case sabotage: every authored footprint blocks at once —
-       every gate closed, every bridge collapsed, every stalactite
-       fallen. A lap must survive even that. *)
+    (* Worst-case sabotage: every authored footprint blocks at once — every
+       gate closed, every bridge collapsed, every stalactite fallen. A lap
+       must survive even that. *)
     let blocked =
       List.fold
         spec.features
@@ -365,7 +384,7 @@ let semantic_errors (spec : Spec.t) ~surfaces ~environments ~rows ~cols =
     in
     let passable (cell : Cell.t) =
       in_grid cell ~rows ~cols
-      && not (Surface.is_solid surfaces.(cell.row).(cell.col))
+      && (not (Surface.is_solid surfaces.(cell.row).(cell.col)))
       && not (Set.mem blocked cell)
     in
     (* BFS over 4-connected passable cells. *)
@@ -453,8 +472,8 @@ let build (spec : Spec.t) ~surfaces ~environments =
         | Gate -> Gate { phase = Open }
         | Stalactite -> Stalactite { phase = Hanging }
         | Ice_patch ->
-          (* Rejected by [semantic_errors]; [build] runs only on
-             validated specs. *)
+          (* Rejected by [semantic_errors]; [build] runs only on validated
+             specs. *)
           raise_s
             [%message
               "BUG: authored ice patch survived validation"
@@ -479,12 +498,10 @@ let load sexp =
   let surfaces = grid_of_rows spec.surfaces in
   let environments = grid_of_rows spec.environments in
   let rows = Array.length surfaces in
-  let cols =
-    match rows with
-    | 0 -> 0
-    | _ -> Array.length surfaces.(0)
+  let cols = match rows with 0 -> 0 | _ -> Array.length surfaces.(0) in
+  let%bind () =
+    Or_error.combine_errors_unit (shape_errors spec ~rows ~cols)
   in
-  let%bind () = Or_error.combine_errors_unit (shape_errors spec ~rows ~cols) in
   let%bind () =
     Or_error.combine_errors_unit
       (semantic_errors spec ~surfaces ~environments ~rows ~cols)

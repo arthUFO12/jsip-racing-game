@@ -15,8 +15,10 @@ code is ground truth**; this doc explains it and records decisions.
   "is this cell blocked?", "what does this driver see?").
 
 It is linked by **both** the server (authoritative state, physics queries)
-and the client (rendering data), so it depends on `core` only — no
-`graphics`, no networking. Non-goals: cars/physics/game loop/RPC (the rest
+and the client (rendering data), so it depends on `core` and
+`racing_types` only — no `graphics`, no networking. World-coordinate
+vocabulary (`Position`, `Tick`) comes from `Racing_types`;
+`Cell.of_position` is the bridge from car space to the grid. Non-goals: cars/physics/game loop/RPC (the rest
 of the project), car-targeted powerdowns (vines, mud bombs — those are car
 status effects; the map's only involvement is `Environment.t` legality),
 and the powerup/inventory economy.
@@ -25,7 +27,7 @@ and the powerup/inventory economy.
 
 | Question | Decision |
 |---|---|
-| Geometry | **Grid world, free cars**: tile grid for terrain/features, continuous `Vec2.t` positions for cars |
+| Geometry | **Grid world, free cars**: tile grid for terrain/features, continuous `Racing_types.Position.t` for cars |
 | Surfaces | `Road \| Wall \| Trees` — no slow/deadly ground; `Wall`/`Trees` differ only in rendering |
 | Environments | `Forest \| Castle \| Cave` — theme, darkness (`Cave`), power legality |
 | Map format | **Pure sexp file** (grid included as sexp data); parser ≈ free via `[@@deriving sexp]` + validation |
@@ -223,10 +225,11 @@ collect **all** errors, not just the first):
 Dependency layers (each depends only on layers above):
 
 ```
-tick   vec2   surface   environment   feature_id      (leaves)
-       pose ── cell                                    (vec2)
+racing_types: Position, Tick                    (the shared vocabulary)
+surface   environment   feature_id              (leaves)
+pose ── cell                                    (position)
 feature (tick cell surface feature_id)
-checkpoint (cell pose)        track_action (feature_id vec2)
+checkpoint (cell pose)        track_action (feature_id position)
 game_map (everything above)
 map_state (game_map + everything; Update + Viewport submodules)
 racing_map (re-exports the lot; `open Racing_map` where convenient)
@@ -292,14 +295,10 @@ test_game_map, test_map_state)
 7. Stalactite impact on cars: stun (~2s) vs. damage (stun).
 8. Co-pilot's view: whole map vs. enlarged window (whole map — seeing
    ahead is their job; use the base-map blit).
-9. Unify with `Racing_types`, which landed after this design was written:
-   it now has its own `Tick` (no `bin_io`, no `add`) and a `Position`
-   that duplicates `Vec2`; its `Interference` doc explicitly waits for
-   track-model ids. (Suggested: `racing_map` adopts
-   `Racing_types.{Tick,Position}` once `bin_io`/`add` are added there,
-   and `Interference` grows map-targeting constructors embedding
-   `Track_action.t` — a small coordinated follow-up PR, deliberately not
-   done under deadline.)
+9. ~~Unify with `Racing_types`~~ — **done** (PR #5): `racing_map` now
+   uses `Racing_types.{Position,Tick}` and `Cell.of_position` bridges
+   car space to the grid. Still open: `Racing_types.Interference`
+   growing map-targeting constructors that embed `Track_action.t`.
 10. Map delivery at join: `join_game_rpc` response vs. a dedicated
     `get_map_rpc` (dedicated RPC — reconnecting clients can refetch
     without rejoining).

@@ -9,14 +9,14 @@
     - both grids are rectangular, nonempty, and the same dimensions;
     - checkpoint indexes are exactly [0 .. n-1] with [n >= 2], their cells on
       [Road];
-    - every checkpoint is BFS-reachable from the previous one (and
-      checkpoint 1 from every start slot) over non-solid cells with every
-      gate closed, every bridge collapsed, and every stalactite fallen — so
-      no combination of sabotage can make a lap impossible;
+    - every checkpoint is BFS-reachable from the previous one (and checkpoint
+      1 from every start slot) over non-solid cells with every gate closed,
+      every bridge collapsed, and every stalactite fallen — so no combination
+      of sabotage can make a lap impossible;
     - start slots lie on [Road];
     - feature footprints are nonempty, non-overlapping, and on [Road];
-      stalactites hang only over [Cave] cells; ice patches cannot be
-      authored (they are spawned in play). *)
+      stalactites hang only over [Cave] cells; ice patches cannot be authored
+      (they are spawned in play). *)
 
 open! Core
 open Racing_types

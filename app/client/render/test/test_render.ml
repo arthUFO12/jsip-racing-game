@@ -138,12 +138,12 @@ let%expect_test "scene has the expected primitive mix and HUD copy" =
   List.filter_map scene ~f:text_of |> List.iter ~f:(printf "  %S\n");
   [%expect
     {|
-    primitives: 79
+    primitives: 100
 
-      Fill_ellipse x 15
-      Fill_poly    x 8
-      Fill_rect    x 19
-      Line         x 27
+      Fill_ellipse x 23
+      Fill_poly    x 12
+      Fill_rect    x 24
+      Line         x 31
       Rect         x 5
       Text         x 5
 

@@ -1,6 +1,10 @@
+(rule
+ (copy %{workspace_root}/maps/castle_run.sexp castle_run.sexp))
+
 (library
  (name jsip_client_render_test)
  (libraries core racing_map racing_types jsip_client_render)
- (inline_tests)
+ (inline_tests
+  (deps castle_run.sexp))
  (preprocess
   (pps ppx_jane)))

@@ -17,7 +17,6 @@
 open! Core
 open Racing_map
 open Racing_types
-module Prim = Jsip_client_render.Prim
 
 (** Layered foliage filling the cell box — richer than a flat green tile. A
     trunk plus overlapping foliage discs in lightened/darkened shades of

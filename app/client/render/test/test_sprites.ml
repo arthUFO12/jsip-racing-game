@@ -3,7 +3,7 @@ open Racing_map
 open Racing_types
 module Prim = Jsip_client_render.Prim
 module Palette = Jsip_client_render.Palette
-module Sprites = Jsip_client_sprites.Sprites
+module Sprites = Jsip_client_render.Sprites
 
 (* Derive a primitive's kind (its sexp head atom) so we can summarize a scene
    as a per-kind histogram rather than pinning every coordinate — same idiom

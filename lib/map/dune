@@ -1,6 +1,6 @@
 (library
  (name racing_map)
  (public_name jsip-racing-game.racing_map)
- (libraries core)
+ (libraries core racing_types)
  (preprocess
   (pps ppx_jane)))

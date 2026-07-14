@@ -13,3 +13,12 @@ let%expect_test "ticks are monotonic so clients can drop stale snapshots" =
   print_s [%sexp (is_newer t1 ~than:t2 : bool)];
   [%expect {| false |}]
 ;;
+
+let%expect_test "gameplay timers are absolute expiry ticks" =
+  let now = Tick.of_int 100 in
+  let reopens_at = Tick.add now 45 in
+  print_s [%sexp (reopens_at : Tick.t)];
+  [%expect {| 145 |}];
+  print_s [%sexp (Tick.( <= ) reopens_at now : bool)];
+  [%expect {| false |}]
+;;

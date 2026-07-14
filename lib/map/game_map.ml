@@ -5,8 +5,8 @@ type t =
   ; laps_to_win : int
   ; cell_size : float
   ; surfaces : Surface.t array array
-  (* [surfaces.(row).(col)]; row 0 is the BOTTOM row (y-up). Map files
-     list rows top-first for readability; [load] flips them. *)
+      (* [surfaces.(row).(col)]; row 0 is the BOTTOM row (y-up). Map files
+         list rows top-first for readability; [load] flips them. *)
   ; environments : Environment.t array array
   ; checkpoints : Checkpoint.t array
   ; start_grid : Pose.t list
@@ -19,11 +19,11 @@ type t =
       authoring schema in doc/map-design.md (grids as row lists, top row
       first; features as kind + cells, with no ids and no phases).
    2. Parse with [Or_error.try_with] around [Spec.t_of_sexp].
-   3. Validate every invariant listed in the .mli, collecting ALL errors
-      with context ([Or_error.combine_errors_unit]), not just the first.
-   4. Build [t]: flip the row order, assign [Feature_id.t]s in listing
-      order, and wrap feature params in their rest phases ([Intact],
-      [Open], [Hanging]). *)
+   3. Validate every invariant listed in the .mli, collecting ALL errors with
+      context ([Or_error.combine_errors_unit]), not just the first.
+   4. Build [t]: flip the row order, assign [Feature_id.t]s in listing order,
+      and wrap feature params in their rest phases ([Intact], [Open],
+      [Hanging]). *)
 let load (_ : Sexp.t) = failwith "TODO: implement Game_map.load"
 
 let load_file_exn filename =
@@ -57,7 +57,7 @@ let environment_at t (cell : Cell.t) =
   | false -> Environment.Forest
 ;;
 
-let cell_at t v = Cell.of_vec2 v ~cell_size:t.cell_size
+let cell_at t position = Cell.of_position position ~cell_size:t.cell_size
 let checkpoints t = t.checkpoints
 
 let checkpoint_at t cell =

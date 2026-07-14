@@ -35,6 +35,21 @@ module Game_snapshot = struct
   [@@deriving bin_io, sexp_of]
 end
 
+module Interference = struct
+  (* A track player's sabotage comes in two halves that live in two different
+     libraries: [Racing_types.Interference] — powerdowns aimed at a rival
+     driver (vines, mud) — and [Racing_map.Track_action] — actions that alter
+     the track itself (collapse a bridge, close a gate, drop a stalactite,
+     pour ice). Neither can reference the other: the map library depends on
+     the types library, not the reverse. The protocol sits above both, so it
+     unions them here — wrapping the two existing types rather than
+     re-listing a single constructor of either. *)
+  type t =
+    | On_driver of Racing_types.Interference.t
+    | On_track of Racing_map.Track_action.t
+  [@@deriving bin_io, compare, equal, sexp_of]
+end
+
 let join_game_rpc =
   Rpc.Rpc.create
     ~name:"join-game"

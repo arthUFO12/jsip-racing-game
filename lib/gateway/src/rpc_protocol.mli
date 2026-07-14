@@ -66,6 +66,19 @@ module Game_snapshot : sig
   [@@deriving bin_io, sexp_of]
 end
 
+module Interference : sig
+  (** A track player's sabotage, unified across the two libraries that own
+      its halves: {!Racing_types.Interference} (powerdowns aimed at a rival
+      driver — vines, mud) and {!Racing_map.Track_action} (actions that alter
+      the track — collapse a bridge, close a gate, drop a stalactite, pour
+      ice). Neither library can reference the other, so the protocol unions
+      them here rather than duplicating a single constructor of either. *)
+  type t =
+    | On_driver of Racing_types.Interference.t
+    | On_track of Racing_map.Track_action.t
+  [@@deriving bin_io, compare, equal, sexp_of]
+end
+
 (** Join as a named player on a team, as [Driver] or [Track_player]. Returns
     the server-assigned {!Player_id.t} that identifies this player in every
     snapshot. Errors: invalid name, seat already taken, or this connection
@@ -87,9 +100,10 @@ val driver_input_rpc : Driver_input.t Rpc.One_way.t
     race not running. *)
 val use_powerup_rpc : (Powerup.t, unit Or_error.t) Rpc.Rpc.t
 
-(** Track player invokes interference against other teams. Errors: not a
-    track player, invalid target (a track player, or your own driver), race
-    not running. *)
+(** Track player invokes interference against other teams — an
+    {!Interference.t}, so one RPC carries both driver-targeting powerdowns
+    and track-altering actions. Errors: not a track player, invalid target (a
+    track player, or your own driver), race not running. *)
 val use_interference_rpc : (Interference.t, unit Or_error.t) Rpc.Rpc.t
 
 (** Track player grants a powerup from their stock to their own driver, who

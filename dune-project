@@ -27,7 +27,7 @@
   core
   core_unix
   core_bench
-  ppx_jane
+ ppx_jane
   async
   async_log
   async_rpc_kernel

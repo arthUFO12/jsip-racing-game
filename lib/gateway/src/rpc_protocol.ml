@@ -1,5 +1,6 @@
 open! Core
 open Racing_types
+open Racing_map
 
 (* The RPC descriptions are transport-agnostic, so they take [Rpc] from
    [async_rpc_kernel] rather than the full [Async] library: anything that
@@ -15,10 +16,35 @@ module Join_request = struct
   [@@deriving bin_io, compare, equal, sexp_of]
 end
 
+module Joined = struct
+  type t =
+    { player_id : Player_id.t
+    ; map : Game_map.t
+    }
+  [@@deriving bin_io, sexp_of]
+end
+
+module Player_info = struct
+  type t =
+    { player : Player.t
+    ; team : Team_id.t
+    ; role : Role.t
+    }
+  [@@deriving bin_io, compare, equal, sexp_of]
+end
+
+module Sabotage = struct
+  type t =
+    | Car of Interference.t
+    | Track of Track_action.t
+  [@@deriving bin_io, compare, equal, sexp_of]
+end
+
 module Car = struct
   type t =
     { position : Position.t
     ; velocity : Velocity.t
+    ; progress : Checkpoint.Progress.t
     }
   [@@deriving bin_io, compare, equal, sexp_of]
 end
@@ -27,8 +53,10 @@ module Game_snapshot = struct
   type t =
     { tick : Tick.t
     ; race_status : Race_status.t
+    ; players : Player_info.t list
     ; teams : Team.t list
     ; cars : Car.t Player_id.Map.t
+    ; track : Map_state.t
     ; effects : Effect.t list Player_id.Map.t
     ; inventories : Powerup.t list Player_id.Map.t
     }
@@ -40,7 +68,7 @@ let join_game_rpc =
     ~name:"join-game"
     ~version:1
     ~bin_query:Join_request.bin_t
-    ~bin_response:[%bin_type_class: Player_id.t Or_error.t]
+    ~bin_response:[%bin_type_class: Joined.t Or_error.t]
     ~include_in_error_count:Only_on_exn
 ;;
 
@@ -74,7 +102,7 @@ let use_interference_rpc =
   Rpc.Rpc.create
     ~name:"use-interference"
     ~version:1
-    ~bin_query:Interference.bin_t
+    ~bin_query:Sabotage.bin_t
     ~bin_response:[%bin_type_class: unit Or_error.t]
     ~include_in_error_count:Only_on_exn
 ;;

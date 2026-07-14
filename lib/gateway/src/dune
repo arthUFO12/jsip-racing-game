@@ -1,6 +1,6 @@
 (library
  (name racing_gateway)
  (public_name jsip-racing-game.racing_gateway)
- (libraries racing_types async async_rpc_kernel core)
+ (libraries racing_types racing_map async async_rpc_kernel core)
  (preprocess
   (pps ppx_jane)))

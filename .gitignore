@@ -37,3 +37,8 @@ setup.log
 
 # Local OPAM switch
 _opam/
+
+# claude
+.claude
+
+CLAUDE.md

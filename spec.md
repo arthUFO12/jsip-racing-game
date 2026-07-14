@@ -23,8 +23,9 @@ involves:
 The driver can only see a small part of the track at one time, so they
 depend on their copilot's warnings.
 
+The first team whose driver crosses the finish line wins.
+
 - **[OPEN]** How many teams race at once? Is there a minimum/maximum?
-- **[OPEN]** What is the win condition — first team to finish N laps?
 
 ### B. Which specializations does your project cover?
 
@@ -32,9 +33,8 @@ depend on their copilot's warnings.
   interact and converse with other players.
 - **Networking** — players connect to a central server through the
   client-side app.
-- **[OPEN]** We also plan to render cars, obstacles, and car visual states
-  (exploding, wings, …) — decide whether to claim **visual effects** as a
-  third specialization.
+- **Visual effects** — drawing cars, obstacles, powerups, and car visual
+  states (exploding, wings, …) on the client.
 
 ## 2. Project components
 
@@ -64,6 +64,11 @@ depend on their copilot's warnings.
 
 - `Pipe_rpc`. The server owns all game logic and pushes state to clients
   on every update.
+- One broadcast feed shared by all clients: every client receives the
+  same full game state on every update, tagged with globally unique
+  player IDs. Each client filters and renders the view for its role.
+  (With `Pipe_rpc`, each subscriber technically holds its own pipe, but
+  the content is identical for everyone.)
 - Clients only send their inputs (heading, speed, powerup uses) and are in
   charge of rendering.
 
@@ -88,8 +93,9 @@ depend on their copilot's warnings.
   there may be issues with race conditions or fairness — e.g. simultaneous
   inputs from different clients, or a track change landing while a car is
   in the affected section.
-- **Per-role views.** Generating different views of the same game state
-  depending on whether a player is a copilot or a driver.
+- **Per-role views.** All clients receive the same game state, so the
+  copilot and driver clients must render very different views of it
+  (whole-track overview vs. the driver's small window).
 
 ## 3. Power-ups and power-downs
 
@@ -100,16 +106,21 @@ the gameplay.
 | Power-down (sabotage other teams)                                | Counter power-up (protect your own driver) |
 | ---------------------------------------------------------------- | ------------------------------------------ |
 | Break a bridge — cars fall into the water/void                   | Glider — glide over drops in the track     |
-| Ice — track very slippery for all drivers; melts after X seconds | Flame magic — melts the ice                |
+| Ice — track very slippery for all drivers; melts after 10 seconds | Flame magic — melts the ice              |
 | Stalactites triggered to fall (cave sections only)               | Flashlights — light up cave sections       |
-| Vines across the track — reduce speed by X% for X seconds        | Axe — cut through the vines                |
-| Mud bomb — blocks one driver's visibility for X seconds          | *(none yet — intended?)*                   |
+| Vines across the track — reduce speed by 50% for 8 seconds       | Axe — cut through the vines                |
+| Mud bomb — blocks one driver's visibility for 5 seconds          | *(none yet — intended?)*                   |
 | Closing castle gates — forces a driver onto a different route    | *(none — the driver just reroutes)*        |
+
+The durations above are initial values — name them as constants in the
+code and tune them during playtesting.
 
 Standalone power-ups (no power-down attached):
 
 - Speed boost.
-- Invincibility — unaffected by individual power-downs.
+- Invincibility — unaffected by *individual* power-downs. Track
+  power-downs still apply: an invincible car does not survive a broken
+  bridge.
 
 Power-downs come in two kinds:
 
@@ -118,14 +129,8 @@ Power-downs come in two kinds:
   and timers.
 - **Individual power-downs** target one driver: vines, mud bombs.
 
-Open questions:
-
-- **[OPEN]** Replace the X placeholders with real numbers (or decide they
-  are per-map configuration).
-- **[OPEN]** How does a copilot acquire inventory — a fixed loadout at
-  race start, earned over time, or something else?
-- **[OPEN]** Does invincibility also protect against *track* power-downs
-  (does an invincible car survive a broken bridge)?
+Copilots earn inventory passively over time during the race (exact earn
+rate TBD — tune during playtesting).
 
 ## 4. Things we still have to think about
 
@@ -135,8 +140,10 @@ Open questions:
 ## 5. State of the game
 
 - Tag every update (input and output) with a globally unique player ID.
-- One pipe. **[OPEN]** One pipe *per client*, or literally one shared
-  pipe? (Presumably one per client via `Pipe_rpc` — say so explicitly.)
+- One broadcast feed for all clients: everyone receives the full game
+  state on every update, and each client filters it by role and player ID.
+  (Consequence: the driver's limited view of the track is enforced by the
+  driver client's renderer, not by the server sending less.)
 
 ### Server (owns all game logic)
 
@@ -153,18 +160,19 @@ Keeps track of:
 - **Keeps track of:** the list of all players and their details; how much
   inventory they have.
 - **Sends:** uses of power-ups / power-downs.
-- **Receives:** updated effects from uses of power-ups / power-downs.
-- **[OPEN]** The copilot's whole job is watching the track ahead — don't
-  they also need to receive every player's position and the track state,
-  not just power-up/power-down effects?
+- **Receives:** the full game state broadcast — every player's position
+  and velocity, the state of track power-downs, and updated effects from
+  uses of power-ups / power-downs. The copilot renders the whole-track
+  view from it.
 
 ### Driver (client)
 
 - **Keeps track of:** the list of all players and their details.
 - **Sends:** keyboard input (desired heading and velocity).
-- **Receives:**
-  - updated coordinates + velocity of their own car, including power-down
+- **Receives:** the same full game state broadcast as the copilot. The
+  driver client filters it down to its small window of the track and
+  renders:
+  - its own car's updated coordinates + velocity, including power-down
     effects (speed reduction, etc.);
-  - the visual state of the car (exploding, with wings, etc.).
-- **[OPEN]** To draw other cars in view, the driver also needs *other*
-  players' coordinates — the list above only mentions their own.
+  - other cars currently in view;
+  - the visual state of cars (exploding, with wings, etc.).

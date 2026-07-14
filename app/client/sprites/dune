@@ -1,0 +1,6 @@
+(library
+ (name jsip_client_sprites)
+ (public_name jsip-racing-game.jsip_client_sprites)
+ (libraries core graphics racing_map racing_types jsip_client_render)
+ (preprocess
+  (pps ppx_jane)))

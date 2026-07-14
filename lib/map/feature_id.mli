@@ -1,7 +1,7 @@
 (** Identifies one {!Feature.t} for the whole race — the handle a track
     player's sabotage names ("collapse bridge 3", {!Track_action}).
-    {!Game_map.load} assigns ids to authored features; {!Map_state}
-    allocates fresh ones when a track player spawns an ice patch. *)
+    {!Game_map.load} assigns ids to authored features; {!Map_state} allocates
+    fresh ones when a track player spawns an ice patch. *)
 
 open! Core
 

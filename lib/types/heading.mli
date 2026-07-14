@@ -11,9 +11,13 @@ open! Core
     {[
       Heading.of_radians_exn (5. *. Float.pi) |> Heading.to_radians
       (* = Float.pi *)
-    ]} *)
+    ]}
 
-type t [@@deriving compare, equal, sexp_of]
+    ([bin_io] is a machine format for RPC transport and skips
+    normalization; headings only travel server-to-client, so every heading
+    on the wire was normalized when the server constructed it.) *)
+
+type t [@@deriving bin_io, compare, equal, sexp_of]
 
 (** Pointing along the positive x axis. *)
 val zero : t

@@ -24,6 +24,6 @@ type t =
   | Flame_magic (** melts the ice of {!Interference.Slick_track} *)
   | Flashlight (** see inside cave sections *)
   | Axe (** cut through {!Interference.Vines} *)
-[@@deriving enumerate, hash, sexp]
+[@@deriving bin_io, enumerate, hash, sexp]
 
 include Comparable.S with type t := t

@@ -1,6 +1,6 @@
 open! Core
 
-type t = float [@@deriving compare, equal, sexp_of]
+type t = float [@@deriving bin_io, compare, equal, sexp_of]
 
 let zero = 0.
 let two_pi = 2. *. Float.pi

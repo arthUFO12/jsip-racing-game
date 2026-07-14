@@ -1,4 +1,5 @@
 open! Core
+open Racing_types
 
 type t =
   { name : string
@@ -231,7 +232,7 @@ let shape_errors (spec : Spec.t) ~rows ~cols =
 (* {2 Semantic checks}
 
    Only run once the shape checks pass, so grid indexing, checkpoint
-   pairing, and [Cell.of_vec2] are all safe. [surfaces]/[environments]
+   pairing, and [Cell.of_position] are all safe. [surfaces]/[environments]
    are the flipped internal arrays (row 0 = bottom). *)
 
 let semantic_errors (spec : Spec.t) ~surfaces ~environments ~rows ~cols =
@@ -263,7 +264,7 @@ let semantic_errors (spec : Spec.t) ~surfaces ~environments ~rows ~cols =
   in
   let start_surface_errors =
     List.filter_mapi spec.start_grid ~f:(fun slot (pose : Pose.t) ->
-      let cell = Cell.of_vec2 pose.pos ~cell_size:spec.cell_size in
+      let cell = Cell.of_position pose.pos ~cell_size:spec.cell_size in
       let surface = surface_at cell in
       match Surface.equal surface Road with
       | true -> None
@@ -273,7 +274,7 @@ let semantic_errors (spec : Spec.t) ~surfaces ~environments ~rows ~cols =
              [%message
                "start slot must be on road"
                  (slot : int)
-                 ~pos:(pose.pos : Vec2.t)
+                 ~pos:(pose.pos : Position.t)
                  (cell : Cell.t)
                  (surface : Surface.t)]))
   in
@@ -418,7 +419,7 @@ let semantic_errors (spec : Spec.t) ~surfaces ~environments ~rows ~cols =
     let start_errors =
       let (target : Checkpoint.t) = checkpoints.(1) in
       List.filter_mapi spec.start_grid ~f:(fun slot (pose : Pose.t) ->
-        let cell = Cell.of_vec2 pose.pos ~cell_size:spec.cell_size in
+        let cell = Cell.of_position pose.pos ~cell_size:spec.cell_size in
         let reachable = reachable_from [ cell ] in
         match List.exists target.cells ~f:(Set.mem reachable) with
         | true -> None
@@ -522,7 +523,7 @@ let environment_at t (cell : Cell.t) =
   | false -> Environment.Forest
 ;;
 
-let cell_at t v = Cell.of_vec2 v ~cell_size:t.cell_size
+let cell_at t v = Cell.of_position v ~cell_size:t.cell_size
 let checkpoints t = t.checkpoints
 
 let checkpoint_at t cell =

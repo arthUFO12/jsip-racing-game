@@ -18,11 +18,11 @@ module Kind : sig
     | Powerup of Powerup.t (** granted by your own track player *)
     | Vines (** slowed by {!Interference.Vines}; {!Powerup.Axe} cuts free *)
     | Mud_bomb (** blinded by {!Interference.Mud_bomb} *)
-  [@@deriving compare, equal, sexp_of]
+  [@@deriving bin_io, compare, equal, sexp_of]
 end
 
 type t =
   { kind : Kind.t
   ; remaining : Time_ns.Span.t (** server-computed; counts down to zero *)
   }
-[@@deriving compare, equal, sexp_of]
+[@@deriving bin_io, compare, equal, sexp_of]

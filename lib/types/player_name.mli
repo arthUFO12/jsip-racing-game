@@ -8,10 +8,13 @@ open! Core
 
     There is deliberately no [t_of_sexp] and no unchecked constructor: the
     only way to obtain a [Player_name.t] is {!of_string}, so an invalid name
-    is unrepresentable. Names are for display only and are not guaranteed
-    unique — key data structures by {!Player_id.t} instead. *)
+    is unrepresentable. ([bin_io] is the one exception — a machine format
+    for RPC transport of server-authored data. The name a client {e types}
+    crosses the wire as a plain [string] in the join request and goes
+    through {!of_string} on the server.) Names are for display only and are
+    not guaranteed unique — key data structures by {!Player_id.t} instead. *)
 
-type t [@@deriving compare, equal, sexp_of]
+type t [@@deriving bin_io, compare, equal, sexp_of]
 
 (** Validates the rules above, reporting every rule the string breaks rather
     than just the first. [of_string "Robyn"] is [Ok]; [of_string ""] is an

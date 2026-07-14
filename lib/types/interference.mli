@@ -31,4 +31,4 @@ type t =
   | Vines of Player_id.t
   (** slow the target driver until it wears off or an {!Powerup.Axe} cuts it *)
   | Mud_bomb of Player_id.t (** blind the target driver for a while *)
-[@@deriving compare, equal, sexp_of]
+[@@deriving bin_io, compare, equal, sexp_of]

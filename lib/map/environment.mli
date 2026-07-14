@@ -1,8 +1,8 @@
 (** The theme zone a cell sits in. Orthogonal to {!Surface}: a [Road] cell
-    can run through any environment. Environments drive the client's
-    palette, darkness ({!is_dark}), and where certain powers are legal —
-    stalactites hang only over [Cave] cells; vines (a car status effect,
-    not map state) only make sense in [Forest]. *)
+    can run through any environment. Environments drive the client's palette,
+    darkness ({!is_dark}), and where certain powers are legal — stalactites
+    hang only over [Cave] cells; vines (a car status effect, not map state)
+    only make sense in [Forest]. *)
 
 open! Core
 

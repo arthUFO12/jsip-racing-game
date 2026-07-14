@@ -5,7 +5,7 @@ type t =
   ; driver : Player.t
   ; track_player : Player.t
   }
-[@@deriving compare, equal, sexp_of]
+[@@deriving bin_io, compare, equal, sexp_of]
 
 let create ~id ~(driver : Player.t) ~(track_player : Player.t) =
   if Player_id.equal driver.id track_player.id

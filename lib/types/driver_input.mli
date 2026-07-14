@@ -22,7 +22,7 @@ type t =
   ; steer_left : bool (** A *)
   ; steer_right : bool (** D *)
   }
-[@@deriving compare, equal, sexp_of]
+[@@deriving bin_io, compare, equal, sexp_of]
 
 (** No keys held. *)
 val idle : t

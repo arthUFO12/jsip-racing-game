@@ -12,4 +12,4 @@ type t =
   | Track_player
   (** sees the whole track: warns their driver, grants powerups, and
       sabotages other teams with {!Interference.t} *)
-[@@deriving compare, enumerate, equal, sexp_of]
+[@@deriving bin_io, compare, enumerate, equal, sexp_of]

@@ -7,6 +7,4 @@ module Game_map = Game_map
 module Map_state = Map_state
 module Pose = Pose
 module Surface = Surface
-module Tick = Tick
 module Track_action = Track_action
-module Vec2 = Vec2

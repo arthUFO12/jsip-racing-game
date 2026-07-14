@@ -1,4 +1,5 @@
 open! Core
+open Racing_types
 
 (* Gameplay tuning. Provisional values assuming the server's ~30 ticks/s;
    once a config module exists these belong there. *)
@@ -153,14 +154,14 @@ let apply_action t ~map ~(action : Track_action.t) ~now =
         | Wall | Trees -> true)
     in
     (match cells with
-     | [] -> Or_error.error_s [%message "ice footprint is empty" (center : Vec2.t)]
+     | [] -> Or_error.error_s [%message "ice footprint is empty" (center : Position.t)]
      | _ :: _ ->
        (match not_open_road with
         | _ :: _ ->
           Or_error.error_s
             [%message
               "ice must land on open road"
-                (center : Vec2.t)
+                (center : Position.t)
                 (not_open_road : Cell.t list)]
         | [] ->
           let id =
@@ -290,7 +291,7 @@ let features_near t ~map ~center ~radius =
   Map.data t.features
   |> List.filter ~f:(fun (feature : Feature.t) ->
     List.exists feature.cells ~f:(fun cell ->
-      Float.( <= ) (Vec2.distance (Cell.center cell ~cell_size) center) radius))
+      Float.( <= ) (Position.distance (Cell.center cell ~cell_size) center) radius))
 ;;
 
 module Viewport = struct

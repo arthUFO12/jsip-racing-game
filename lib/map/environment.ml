@@ -6,7 +6,4 @@ type t =
   | Cave
 [@@deriving sexp, bin_io, compare, equal, enumerate]
 
-let is_dark = function
-  | Cave -> true
-  | Forest | Castle -> false
-;;
+let is_dark = function Cave -> true | Forest | Castle -> false

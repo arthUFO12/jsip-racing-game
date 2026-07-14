@@ -6,7 +6,7 @@ type t =
   ; steer_left : bool
   ; steer_right : bool
   }
-[@@deriving compare, equal, sexp_of]
+[@@deriving bin_io, compare, equal, sexp_of]
 
 let idle =
   { accelerate = false

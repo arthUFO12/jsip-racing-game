@@ -3,4 +3,4 @@ open! Core
 type t =
   | Driver
   | Track_player
-[@@deriving compare, enumerate, equal, sexp_of]
+[@@deriving bin_io, compare, enumerate, equal, sexp_of]

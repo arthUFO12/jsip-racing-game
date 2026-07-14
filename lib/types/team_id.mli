@@ -4,9 +4,9 @@ open! Core
     player — see {!Team.t}). Abstract for the same reason as {!Player_id.t}:
     so team ids, player ids and plain [int]s can never be mixed up. *)
 
-type t [@@deriving hash, sexp]
+type t [@@deriving bin_io, hash, sexp]
 
-include Comparable.S with type t := t
+include Comparable.S_binable with type t := t
 include Hashable.S with type t := t
 
 (** For the server-side allocator and tests, like {!Player_id.of_int}. *)

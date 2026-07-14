@@ -34,6 +34,10 @@ let bezel_px = 16
 let hud_height = 52
 let hud_gap = 10
 
+(* Cockpit glass — a cool tint the shared palette has no name for; kept local
+   the way the other view-specific inks are. *)
+let windshield_glass = Color.rgb 150 196 224
+
 (* --- small geometry helpers --- *)
 
 let rotate ~cx ~cy ~theta (lx, ly) =
@@ -45,6 +49,9 @@ let rotate ~cx ~cy ~theta (lx, ly) =
 
 (* --- terrain --- *)
 
+(* Structured (never random) per-cell texture, all lit from the top-left: the
+   lit shade goes up/left of a feature, the shaded one down/right, so a field
+   of cells reads as one coherently-lit surface rather than noise. *)
 let tile_texture
   ~add
   ~x
@@ -54,46 +61,33 @@ let tile_texture
   ~(environment : Environment.t)
   ~base
   =
+  let line x1 y1 x2 y2 color =
+    add (Line { x1; y1; x2; y2; width = 1; color })
+  in
   match surface with
   | Road ->
-    (* a faint seam so the grid reads without shouting *)
-    add
-      (Rect
-         { x; y; w = size; h = size; color = Color.darken base ~frac:0.06 })
+    (* a faint paved-tile bevel: lit top edge, shaded bottom edge *)
+    line x (y + size - 1) (x + size) (y + size - 1) (Color.lighten base ~frac:0.08);
+    line x y (x + size) y (Color.darken base ~frac:0.14)
   | Trees ->
     let clump dx dy r shade =
       add
         (Fill_ellipse
-           { x = x + dx; y = y + dy; rx = r; ry = r; color = shade })
+           { x = x + dx; y = y + dy; rx = Int.max 1 r; ry = Int.max 1 r; color = shade })
     in
-    clump
-      (size / 3)
-      (2 * size / 3)
-      (size / 4)
-      (Color.lighten base ~frac:0.14);
-    clump (2 * size / 3) (size / 3) (size / 5) (Color.darken base ~frac:0.16)
+    (* canopy: shaded lobe down-right, then the lit crown up-left, then a
+       bright highlight where the light lands *)
+    clump (2 * size / 3) (size / 3) (size / 4) (Color.darken base ~frac:0.18);
+    clump (2 * size / 5) (3 * size / 5) (size / 4) (Color.lighten base ~frac:0.12);
+    clump (size / 3) (2 * size / 3) (size / 8) (Color.lighten base ~frac:0.26)
   | Wall ->
     (match environment with
      | Castle ->
-       let mortar = Color.darken base ~frac:0.22 in
-       add
-         (Line
-            { x1 = x
-            ; y1 = y + (size / 2)
-            ; x2 = x + size
-            ; y2 = y + (size / 2)
-            ; width = 1
-            ; color = mortar
-            });
-       add
-         (Line
-            { x1 = x + (size / 2)
-            ; y1 = y
-            ; x2 = x + (size / 2)
-            ; y2 = y + (size / 2)
-            ; width = 1
-            ; color = mortar
-            })
+       (* a raised cut-stone block: lit top, shaded bottom, one mortar seam *)
+       line x (y + size - 1) (x + size) (y + size - 1) (Color.lighten base ~frac:0.14);
+       line x y (x + size) y (Color.darken base ~frac:0.26);
+       line x (y + (size / 2)) (x + size) (y + (size / 2)) (Color.darken base ~frac:0.2);
+       line (x + (size / 2)) y (x + (size / 2)) (y + (size / 2)) (Color.darken base ~frac:0.2)
      | Forest | Cave ->
        let dot dx dy r shade =
          add
@@ -105,16 +99,10 @@ let tile_texture
               ; color = shade
               })
        in
-       dot
-         (size / 3)
-         (2 * size / 3)
-         (size / 10)
-         (Color.lighten base ~frac:0.12);
-       dot
-         (2 * size / 3)
-         (size / 3)
-         (size / 12)
-         (Color.darken base ~frac:0.14))
+       (* rounded boulder: shaded flank down-right, lit crown up-left, speck *)
+       dot (3 * size / 5) (2 * size / 5) (size / 4) (Color.darken base ~frac:0.16);
+       dot (2 * size / 5) (3 * size / 5) (size / 4) (Color.lighten base ~frac:0.12);
+       dot (size / 3) (2 * size / 3) (size / 10) (Color.lighten base ~frac:0.24))
 ;;
 
 (* --- features --- *)
@@ -185,7 +173,7 @@ let draw_bridge ~add ~boxes ~size ~(phase : Feature.Bridge.Phase.t) =
            ; y = y + (size / 3)
            ; rx = size / 6
            ; ry = size / 12
-           ; color = Color.lighten Palette.water ~frac:0.2
+           ; color = Palette.rim_light
            }))
 ;;
 
@@ -398,34 +386,36 @@ let draw_car ~add ~cam ~(car : Car.t) =
   let hw = Float.of_int size *. 0.26 in
   let corner lx ly = rotate ~cx ~cy ~theta (lx, ly) in
   let livery = Palette.team car.team in
+  (* Soft contact shadow, thrown down-right of the car to match the light. *)
   add
     (Fill_ellipse
-       { x = cx
-       ; y = cy - (size / 8)
+       { x = cx + (size / 12)
+       ; y = cy - (size / 6)
        ; rx = Int.max 2 (size * 2 / 5)
        ; ry = Int.max 1 (size / 6)
        ; color = Palette.car_shadow
        });
   if invincible car
-  then
+  then (
+    (* a two-ring shimmer rather than a flat disc *)
+    add
+      (Fill_ellipse
+         { x = cx; y = cy; rx = size / 2; ry = size / 2; color = Palette.shield });
     add
       (Fill_ellipse
          { x = cx
          ; y = cy
-         ; rx = size / 2
-         ; ry = size / 2
-         ; color = Palette.shield
-         });
+         ; rx = size * 2 / 5
+         ; ry = size * 2 / 5
+         ; color = Color.lighten Palette.shield ~frac:0.35
+         }));
   if boosting car
   then (
     let tip = corner (-.hl -. (Float.of_int size *. 0.35)) 0. in
     add
       (Fill_poly
          { points =
-             [| corner (-.hl) (hw *. 0.6)
-              ; corner (-.hl) (-.hw *. 0.6)
-              ; tip
-             |]
+             [| corner (-.hl) (hw *. 0.6); corner (-.hl) (-.hw *. 0.6); tip |]
          ; color = Palette.boost_flame
          });
     add
@@ -457,35 +447,55 @@ let draw_car ~add ~cam ~(car : Car.t) =
              |]
          ; color = Palette.glider_wing
          }));
+  (* Rounded, nose-tapered hull so the silhouette reads as a car, not a box. *)
   add
     (Fill_poly
        { points =
-           [| corner hl hw
-            ; corner hl (-.hw)
-            ; corner (-.hl) (-.hw)
-            ; corner (-.hl) hw
+           [| corner hl (hw *. 0.5)
+            ; corner (hl *. 0.5) hw
+            ; corner (-.hl *. 0.85) hw
+            ; corner (-.hl) (hw *. 0.55)
+            ; corner (-.hl) (-.hw *. 0.55)
+            ; corner (-.hl *. 0.85) (-.hw)
+            ; corner (hl *. 0.5) (-.hw)
+            ; corner hl (-.hw *. 0.5)
            |]
        ; color = livery
        });
+  (* Shaded tail grounds the hull; the lit nose wedge doubles as the heading. *)
   add
     (Fill_poly
        { points =
-           [| corner (hl *. 0.55) (hw *. 0.7)
-            ; corner (hl *. 0.55) (-.hw *. 0.7)
-            ; corner (hl *. 0.1) (-.hw *. 0.7)
-            ; corner (hl *. 0.1) (hw *. 0.7)
+           [| corner (-.hl *. 0.2) hw
+            ; corner (-.hl) (hw *. 0.55)
+            ; corner (-.hl) (-.hw *. 0.55)
+            ; corner (-.hl *. 0.2) (-.hw)
            |]
-       ; color = Color.rgb 150 196 224
+       ; color = Color.darken livery ~frac:0.24
        });
   add
     (Fill_poly
        { points =
-           [| corner (hl *. 1.05) 0.
-            ; corner (hl *. 0.5) (hw *. 0.5)
-            ; corner (hl *. 0.5) (-.hw *. 0.5)
+           [| corner (hl *. 1.02) 0.
+            ; corner (hl *. 0.45) (hw *. 0.72)
+            ; corner (hl *. 0.45) (-.hw *. 0.72)
            |]
-       ; color = Color.lighten livery ~frac:0.25
+       ; color = Color.lighten livery ~frac:0.26
        });
+  add
+    (Fill_poly
+       { points =
+           [| corner (hl *. 0.4) (hw *. 0.62)
+            ; corner (hl *. 0.4) (-.hw *. 0.62)
+            ; corner (-.hl *. 0.05) (-.hw *. 0.62)
+            ; corner (-.hl *. 0.05) (hw *. 0.62)
+           |]
+       ; color = windshield_glass
+       });
+  let gx1, gy1 = corner (hl *. 0.36) (hw *. 0.5) in
+  let gx2, gy2 = corner (-.hl *. 0.02) (hw *. 0.2) in
+  add
+    (Line { x1 = gx1; y1 = gy1; x2 = gx2; y2 = gy2; width = 1; color = Palette.rim_light });
   if vined car
   then
     List.iter [ -0.5; 0.0; 0.5 ] ~f:(fun t ->
@@ -493,15 +503,10 @@ let draw_car ~add ~cam ~(car : Car.t) =
       and bx, by = corner (hl *. t) (-.hw) in
       add
         (Line
-           { x1 = ax
-           ; y1 = ay
-           ; x2 = bx
-           ; y2 = by
-           ; width = 2
-           ; color = Palette.vines
-           }));
+           { x1 = ax; y1 = ay; x2 = bx; y2 = by; width = 2; color = Palette.vines }));
   if car.is_self
-  then
+  then (
+    (* a pinned marker floating above the local driver *)
     add
       (Fill_poly
          { points =
@@ -509,23 +514,55 @@ let draw_car ~add ~cam ~(car : Car.t) =
               ; cx - (size / 6), cy + size
               ; cx + (size / 6), cy + size
              |]
+         ; color = Palette.hud_accent
+         });
+    add
+      (Fill_poly
+         { points =
+             [| cx, cy + (size * 4 / 5)
+              ; cx - (size / 10), cy + size
+              ; cx + (size / 10), cy + size
+             |]
          ; color = Palette.hud_title
-         })
+         }))
 ;;
 
 (* --- HUD --- *)
 
+(* One panel look, shared by every HUD widget. Light falls from the top-left,
+   so a soft shadow drops down-right, the top and left inner edges are lit and
+   the bottom and right are shaded, then a crisp border seals it. This bevel
+   is what turns a flat rectangle into something that reads as a raised plate. *)
 let panel ~add ~x ~y ~w ~h =
+  let hi = Color.lighten Palette.hud_panel ~frac:0.2 in
+  let lo = Color.darken Palette.hud_panel ~frac:0.3 in
+  add (Fill_rect { x = x + 3; y = y - 3; w; h; color = Palette.hud_shadow });
   add (Fill_rect { x; y; w; h; color = Palette.hud_panel });
-  add (Rect { x; y; w; h; color = Palette.hud_border });
   add
-    (Rect
-       { x = x + 1
-       ; y = y + 1
-       ; w = w - 2
-       ; h = h - 2
-       ; color = Color.lighten Palette.hud_panel ~frac:0.12
-       })
+    (Line
+       { x1 = x + 1
+       ; y1 = y + h - 1
+       ; x2 = x + w - 1
+       ; y2 = y + h - 1
+       ; width = 1
+       ; color = hi
+       });
+  add
+    (Line
+       { x1 = x + 1; y1 = y + 1; x2 = x + 1; y2 = y + h - 1; width = 1; color = hi });
+  add
+    (Line
+       { x1 = x + 1; y1 = y + 1; x2 = x + w - 1; y2 = y + 1; width = 1; color = lo });
+  add
+    (Line
+       { x1 = x + w - 1
+       ; y1 = y + 1
+       ; x2 = x + w - 1
+       ; y2 = y + h - 1
+       ; width = 1
+       ; color = lo
+       });
+  add (Rect { x; y; w; h; color = Palette.hud_border })
 ;;
 
 let format_time span =

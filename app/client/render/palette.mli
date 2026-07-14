@@ -63,8 +63,17 @@ val car_shadow : Prim.Color.t
 val cave_shade : Prim.Color.t
 val hud_panel : Prim.Color.t
 val hud_border : Prim.Color.t
+
+(** the soft drop shadow cast down-right of a panel (light comes from the
+    top-left throughout) *)
+val hud_shadow : Prim.Color.t
+
 val hud_text : Prim.Color.t
 val hud_title : Prim.Color.t
 
 (** the highlighted value, e.g. POS 1st *)
 val hud_accent : Prim.Color.t
+
+(** a warm near-white specular ink for top/left rim highlights and glints —
+    the light-source colour, kept consistent across cars, water and chrome *)
+val rim_light : Prim.Color.t

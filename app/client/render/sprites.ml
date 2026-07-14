@@ -7,8 +7,6 @@
 open! Core
 open Racing_map
 open Racing_types
-module Prim = Jsip_client_render.Prim
-module Palette = Jsip_client_render.Palette
 module Color = Prim.Color
 
 (* Tints not in the shared palette, kept local by design. *)

@@ -32,6 +32,73 @@ let ordinal n =
   sprintf "%d%s" n suffix
 ;;
 
+(* One shared panel look for every widget, matching the two render views: a
+   soft drop shadow down-right, lit top/left edges and shaded bottom/right
+   edges (light from the top-left), then a crisp border. [face] is the plate
+   colour so widgets that want a slightly different tint can pass their own. *)
+let beveled_panel ~add ~x ~y ~w ~h ~face =
+  let hi = Color.lighten face ~frac:0.2 in
+  let lo = Color.darken face ~frac:0.3 in
+  add
+    (Prim.Fill_rect { x = x + 3; y = y - 3; w; h; color = Palette.hud_shadow });
+  add (Prim.Fill_rect { x; y; w; h; color = face });
+  add
+    (Prim.Line
+       { x1 = x + 1
+       ; y1 = y + h - 1
+       ; x2 = x + w - 1
+       ; y2 = y + h - 1
+       ; width = 1
+       ; color = hi
+       });
+  add
+    (Prim.Line
+       { x1 = x + 1; y1 = y + 1; x2 = x + 1; y2 = y + h - 1; width = 1; color = hi });
+  add
+    (Prim.Line
+       { x1 = x + 1; y1 = y + 1; x2 = x + w - 1; y2 = y + 1; width = 1; color = lo });
+  add
+    (Prim.Line
+       { x1 = x + w - 1
+       ; y1 = y + 1
+       ; x2 = x + w - 1
+       ; y2 = y + h - 1
+       ; width = 1
+       ; color = lo
+       });
+  add (Prim.Rect { x; y; w; h; color = Palette.hud_border })
+;;
+
+(* A small raised item tile — the lighter-weight cousin of {!beveled_panel}
+   for the inventory bar. *)
+let tile_bg ~add ~x ~y ~size =
+  let face = Color.darken Palette.hud_panel ~frac:0.08 in
+  let hi = Color.lighten face ~frac:0.22 in
+  add
+    (Prim.Fill_rect
+       { x = x + 2; y = y - 2; w = size; h = size; color = Palette.hud_shadow });
+  add (Prim.Fill_rect { x; y; w = size; h = size; color = face });
+  add
+    (Prim.Line
+       { x1 = x + 1
+       ; y1 = y + size - 1
+       ; x2 = x + size - 1
+       ; y2 = y + size - 1
+       ; width = 1
+       ; color = hi
+       });
+  add
+    (Prim.Line
+       { x1 = x + 1
+       ; y1 = y + 1
+       ; x2 = x + 1
+       ; y2 = y + size - 1
+       ; width = 1
+       ; color = hi
+       });
+  add (Prim.Rect { x; y; w = size; h = size; color = Palette.hud_border })
+;;
+
 (* --- countdown --- *)
 
 let countdown ~count ~window_w ~window_h =
@@ -44,6 +111,15 @@ let countdown ~count ~window_w ~window_h =
   let cy = window_h / 2 in
   let radius = Int.max 40 (Int.min window_w window_h / 5) in
   let thickness = Int.max 6 (radius / 5) in
+  (* A soft halo that fades the ring into the scrim, faking a glow. *)
+  add
+    (Prim.Fill_ellipse
+       { x = cx
+       ; y = cy
+       ; rx = radius + (thickness / 2)
+       ; ry = radius + (thickness / 2)
+       ; color = Color.mix Palette.hud_accent scrim ~frac:0.6
+       });
   (* An accent ring: a filled disc with the scrim punched back out of it. *)
   add
     (Prim.Fill_ellipse
@@ -132,6 +208,16 @@ let finish_board standings ~window_w ~window_h =
        ; size = `Large
        ; color = Palette.hud_title
        });
+  (* an accent rule under the title anchors the hierarchy *)
+  add
+    (Prim.Line
+       { x1 = title_x
+       ; y1 = title_y - 8
+       ; x2 = title_x + (String.length title * large_char_px)
+       ; y2 = title_y - 8
+       ; width = 2
+       ; color = Palette.hud_accent
+       });
   let row_h = 40 in
   let first_row_y = title_y - 60 in
   let left_x = (window_w / 2) - 200 in
@@ -145,7 +231,7 @@ let finish_board standings ~window_w ~window_h =
         if is_winner then Palette.hud_accent else Palette.hud_text
       in
       if is_winner
-      then
+      then (
         add
           (Prim.Fill_rect
              { x = left_x - 12
@@ -154,6 +240,14 @@ let finish_board standings ~window_w ~window_h =
              ; h = row_h - 6
              ; color = Color.darken Palette.hud_accent ~frac:0.7
              });
+        add
+          (Prim.Rect
+             { x = left_x - 12
+             ; y = y - 8
+             ; w = 424
+             ; h = row_h - 6
+             ; color = Palette.hud_accent
+             }));
       add
         (Prim.Text
            { x = left_x
@@ -197,22 +291,13 @@ let leaderboard standings ~x ~y =
   let width = 180 in
   let height = (List.length sorted * row_h) + (2 * pad) in
   (* Anchor is the top-left; the panel and rows extend downward from [y]. *)
-  add
-    (Prim.Fill_rect
-       { x
-       ; y = y - height
-       ; w = width
-       ; h = height
-       ; color = Color.darken Palette.hud_panel ~frac:0.1
-       });
-  add
-    (Prim.Rect
-       { x
-       ; y = y - height
-       ; w = width
-       ; h = height
-       ; color = Palette.hud_border
-       });
+  beveled_panel
+    ~add
+    ~x
+    ~y:(y - height)
+    ~w:width
+    ~h:height
+    ~face:(Color.darken Palette.hud_panel ~frac:0.1);
   let swatch_size = 12 in
   List.iteri sorted ~f:(fun i { Standing.place; name; team; laps } ->
     let row_top = y - pad - (i * row_h) in
@@ -359,17 +444,7 @@ let inventory_bar items ~x ~y =
   let gap = 6 in
   List.iteri items ~f:(fun i (powerup, count) ->
     let tx = x + (i * (tile + gap)) in
-    add
-      (Prim.Fill_rect
-         { x = tx
-         ; y
-         ; w = tile
-         ; h = tile
-         ; color = Color.darken Palette.hud_panel ~frac:0.08
-         });
-    add
-      (Prim.Rect
-         { x = tx; y; w = tile; h = tile; color = Palette.hud_border });
+    tile_bg ~add ~x:tx ~y ~size:tile;
     draw_glyph ~add ~powerup ~tx ~y ~size:tile;
     add
       (Prim.Text
@@ -429,6 +504,15 @@ let effect_chips effects ~x ~y =
            ; w = width
            ; h = height
            ; color = Color.darken color ~frac:0.4
+           });
+      add
+        (Prim.Line
+           { x1 = chip_x + 1
+           ; y1 = y + height - 1
+           ; x2 = chip_x + width - 1
+           ; y2 = y + height - 1
+           ; width = 1
+           ; color = Color.lighten color ~frac:0.2
            });
       add (Prim.Rect { x = chip_x; y; w = width; h = height; color });
       add

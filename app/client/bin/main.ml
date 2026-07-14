@@ -93,10 +93,9 @@ let run_driver session input ~map ~self_id ~latest ~window_w ~window_h =
   in
   let%bind first = wait_for_frame ~latest ~build in
   Render.open_window first;
-  let driver = Controls.Driver.create input in
   let last_sent = ref Driver_input.idle in
   run_loop input ~tick:(fun () ->
-    let intent = Controls.Driver.input driver in
+    let intent = Controls.driver_input input in
     if not (Driver_input.equal intent !last_sent)
     then (
       Connection.send_driver_input session intent;

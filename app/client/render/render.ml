@@ -34,6 +34,10 @@ let bezel_px = 16
 let hud_height = 52
 let hud_gap = 10
 
+(* One heraldic banner per this many castle-wall cells (indexed by
+   [col + row]), so the walls read as inhabited without a flag on every block. *)
+let castle_banner_stride = 5
+
 (* --- small geometry helpers --- *)
 
 let rotate ~cx ~cy ~theta (lx, ly) =
@@ -45,7 +49,14 @@ let rotate ~cx ~cy ~theta (lx, ly) =
 
 (* --- terrain --- *)
 
-let tile_texture
+(* One cell's detailed texture, drawn over the flat [base] fill the scene has
+   already laid down. Each surface/zone pairing gets its matching sprite from
+   {!Sprites} — layered foliage for trees, brick for castle walls, rock for
+   forest/cave walls, planks for a castle floor. Forest and cave roads stay
+   deliberately clean (just a faint top-lit bevel) so the drivable path still
+   reads as the path. Light falls from the top-left throughout, matching the
+   sprite kit. *)
+let draw_tile
   ~add
   ~x
   ~y
@@ -54,67 +65,33 @@ let tile_texture
   ~(environment : Environment.t)
   ~base
   =
-  match surface with
-  | Road ->
-    (* a faint seam so the grid reads without shouting *)
+  let add_all prims = List.iter prims ~f:add in
+  match surface, environment with
+  | Trees, (Forest | Castle | Cave) ->
+    add_all (Sprites.tree_cluster ~x ~y ~size ~base)
+  | Wall, Castle -> add_all (Sprites.brick_wall ~x ~y ~size ~base)
+  | Wall, (Forest | Cave) -> add_all (Sprites.rock_wall ~x ~y ~size ~base)
+  | Road, Castle -> add_all (Sprites.plank_floor ~x ~y ~size ~base)
+  | Road, (Forest | Cave) ->
+    (* a faint paved-tile bevel: lit top edge, shaded bottom edge *)
     add
-      (Rect
-         { x; y; w = size; h = size; color = Color.darken base ~frac:0.06 })
-  | Trees ->
-    let clump dx dy r shade =
-      add
-        (Fill_ellipse
-           { x = x + dx; y = y + dy; rx = r; ry = r; color = shade })
-    in
-    clump
-      (size / 3)
-      (2 * size / 3)
-      (size / 4)
-      (Color.lighten base ~frac:0.14);
-    clump (2 * size / 3) (size / 3) (size / 5) (Color.darken base ~frac:0.16)
-  | Wall ->
-    (match environment with
-     | Castle ->
-       let mortar = Color.darken base ~frac:0.22 in
-       add
-         (Line
-            { x1 = x
-            ; y1 = y + (size / 2)
-            ; x2 = x + size
-            ; y2 = y + (size / 2)
-            ; width = 1
-            ; color = mortar
-            });
-       add
-         (Line
-            { x1 = x + (size / 2)
-            ; y1 = y
-            ; x2 = x + (size / 2)
-            ; y2 = y + (size / 2)
-            ; width = 1
-            ; color = mortar
-            })
-     | Forest | Cave ->
-       let dot dx dy r shade =
-         add
-           (Fill_ellipse
-              { x = x + dx
-              ; y = y + dy
-              ; rx = Int.max 1 r
-              ; ry = Int.max 1 r
-              ; color = shade
-              })
-       in
-       dot
-         (size / 3)
-         (2 * size / 3)
-         (size / 10)
-         (Color.lighten base ~frac:0.12);
-       dot
-         (2 * size / 3)
-         (size / 3)
-         (size / 12)
-         (Color.darken base ~frac:0.14))
+      (Line
+         { x1 = x
+         ; y1 = y + size - 1
+         ; x2 = x + size
+         ; y2 = y + size - 1
+         ; width = 1
+         ; color = Color.lighten base ~frac:0.08
+         });
+    add
+      (Line
+         { x1 = x
+         ; y1 = y
+         ; x2 = x + size
+         ; y2 = y
+         ; width = 1
+         ; color = Color.darken base ~frac:0.14
+         })
 ;;
 
 (* --- features --- *)
@@ -185,7 +162,7 @@ let draw_bridge ~add ~boxes ~size ~(phase : Feature.Bridge.Phase.t) =
            ; y = y + (size / 3)
            ; rx = size / 6
            ; ry = size / 12
-           ; color = Color.lighten Palette.water ~frac:0.2
+           ; color = Palette.rim_light
            }))
 ;;
 
@@ -397,35 +374,31 @@ let draw_car ~add ~cam ~(car : Car.t) =
   let hl = Float.of_int size *. 0.42 in
   let hw = Float.of_int size *. 0.26 in
   let corner lx ly = rotate ~cx ~cy ~theta (lx, ly) in
-  let livery = Palette.team car.team in
-  add
-    (Fill_ellipse
-       { x = cx
-       ; y = cy - (size / 8)
-       ; rx = Int.max 2 (size * 2 / 5)
-       ; ry = Int.max 1 (size / 6)
-       ; color = Palette.car_shadow
-       });
+  (* State overlays that sit under the hull go first: the invincibility
+     shimmer as a halo, then the boost flame and glider wings that trail out
+     past the body. The detailed hull sprite (which draws its own shadow) then
+     lands on top of them. *)
   if invincible car
-  then
+  then (
+    (* a two-ring shimmer rather than a flat disc *)
+    add
+      (Fill_ellipse
+         { x = cx; y = cy; rx = size / 2; ry = size / 2; color = Palette.shield });
     add
       (Fill_ellipse
          { x = cx
          ; y = cy
-         ; rx = size / 2
-         ; ry = size / 2
-         ; color = Palette.shield
-         });
+         ; rx = size * 2 / 5
+         ; ry = size * 2 / 5
+         ; color = Color.lighten Palette.shield ~frac:0.35
+         }));
   if boosting car
   then (
     let tip = corner (-.hl -. (Float.of_int size *. 0.35)) 0. in
     add
       (Fill_poly
          { points =
-             [| corner (-.hl) (hw *. 0.6)
-              ; corner (-.hl) (-.hw *. 0.6)
-              ; tip
-             |]
+             [| corner (-.hl) (hw *. 0.6); corner (-.hl) (-.hw *. 0.6); tip |]
          ; color = Palette.boost_flame
          });
     add
@@ -457,35 +430,19 @@ let draw_car ~add ~cam ~(car : Car.t) =
              |]
          ; color = Palette.glider_wing
          }));
-  add
-    (Fill_poly
-       { points =
-           [| corner hl hw
-            ; corner hl (-.hw)
-            ; corner (-.hl) (-.hw)
-            ; corner (-.hl) hw
-           |]
-       ; color = livery
-       });
-  add
-    (Fill_poly
-       { points =
-           [| corner (hl *. 0.55) (hw *. 0.7)
-            ; corner (hl *. 0.55) (-.hw *. 0.7)
-            ; corner (hl *. 0.1) (-.hw *. 0.7)
-            ; corner (hl *. 0.1) (hw *. 0.7)
-           |]
-       ; color = Color.rgb 150 196 224
-       });
-  add
-    (Fill_poly
-       { points =
-           [| corner (hl *. 1.05) 0.
-            ; corner (hl *. 0.5) (hw *. 0.5)
-            ; corner (hl *. 0.5) (-.hw *. 0.5)
-           |]
-       ; color = Color.lighten livery ~frac:0.25
-       });
+  (* The detailed hull itself: shadow, rotated body, windshield, four wheels
+     and headlights, all from the shared sprite kit. *)
+  List.iter
+    (Sprites.car_sprite
+       ~cx
+       ~cy
+       ~size
+       ~heading:theta
+       ~livery:(Palette.team car.team)
+       ~number:None)
+    ~f:add;
+  (* State overlays that read on top of the hull: entangling vines, then the
+     local driver's "you" pin floating above the roof. *)
   if vined car
   then
     List.iter [ -0.5; 0.0; 0.5 ] ~f:(fun t ->
@@ -493,15 +450,10 @@ let draw_car ~add ~cam ~(car : Car.t) =
       and bx, by = corner (hl *. t) (-.hw) in
       add
         (Line
-           { x1 = ax
-           ; y1 = ay
-           ; x2 = bx
-           ; y2 = by
-           ; width = 2
-           ; color = Palette.vines
-           }));
+           { x1 = ax; y1 = ay; x2 = bx; y2 = by; width = 2; color = Palette.vines }));
   if car.is_self
-  then
+  then (
+    (* a pinned marker floating above the local driver *)
     add
       (Fill_poly
          { points =
@@ -509,23 +461,55 @@ let draw_car ~add ~cam ~(car : Car.t) =
               ; cx - (size / 6), cy + size
               ; cx + (size / 6), cy + size
              |]
+         ; color = Palette.hud_accent
+         });
+    add
+      (Fill_poly
+         { points =
+             [| cx, cy + (size * 4 / 5)
+              ; cx - (size / 10), cy + size
+              ; cx + (size / 10), cy + size
+             |]
          ; color = Palette.hud_title
-         })
+         }))
 ;;
 
 (* --- HUD --- *)
 
+(* One panel look, shared by every HUD widget. Light falls from the top-left,
+   so a soft shadow drops down-right, the top and left inner edges are lit and
+   the bottom and right are shaded, then a crisp border seals it. This bevel
+   is what turns a flat rectangle into something that reads as a raised plate. *)
 let panel ~add ~x ~y ~w ~h =
+  let hi = Color.lighten Palette.hud_panel ~frac:0.2 in
+  let lo = Color.darken Palette.hud_panel ~frac:0.3 in
+  add (Fill_rect { x = x + 3; y = y - 3; w; h; color = Palette.hud_shadow });
   add (Fill_rect { x; y; w; h; color = Palette.hud_panel });
-  add (Rect { x; y; w; h; color = Palette.hud_border });
   add
-    (Rect
-       { x = x + 1
-       ; y = y + 1
-       ; w = w - 2
-       ; h = h - 2
-       ; color = Color.lighten Palette.hud_panel ~frac:0.12
-       })
+    (Line
+       { x1 = x + 1
+       ; y1 = y + h - 1
+       ; x2 = x + w - 1
+       ; y2 = y + h - 1
+       ; width = 1
+       ; color = hi
+       });
+  add
+    (Line
+       { x1 = x + 1; y1 = y + 1; x2 = x + 1; y2 = y + h - 1; width = 1; color = hi });
+  add
+    (Line
+       { x1 = x + 1; y1 = y + 1; x2 = x + w - 1; y2 = y + 1; width = 1; color = lo });
+  add
+    (Line
+       { x1 = x + w - 1
+       ; y1 = y + 1
+       ; x2 = x + w - 1
+       ; y2 = y + h - 1
+       ; width = 1
+       ; color = lo
+       });
+  add (Rect { x; y; w; h; color = Palette.hud_border })
 ;;
 
 let format_time span =
@@ -653,6 +637,7 @@ let draw_hud ~add ~(frame : Frame.t) =
 let scene_of_frame (frame : Frame.t) =
   let out = Queue.create () in
   let add p = Queue.enqueue out p in
+  let add_all prims = List.iter prims ~f:add in
   let { Frame.viewport; cell_size; cars; window_w; window_h; _ } = frame in
   let { Map_state.Viewport.origin
       ; surfaces
@@ -684,7 +669,8 @@ let scene_of_frame (frame : Frame.t) =
       ~area_h
   in
   let cpx = Camera.cell_px cam in
-  (* terrain *)
+  (* terrain: a flat zone-coloured base per cell, then its detailed sprite,
+     with the odd banner dressing the castle walls *)
   for r = 0 to rows - 1 do
     for c = 0 to cols - 1 do
       let surface = surfaces.(r).(c) in
@@ -698,11 +684,32 @@ let scene_of_frame (frame : Frame.t) =
         else base
       in
       add (Fill_rect { x; y; w = cpx; h = cpx; color = base });
-      tile_texture ~add ~x ~y ~size:cpx ~surface ~environment ~base
+      draw_tile ~add ~x ~y ~size:cpx ~surface ~environment ~base;
+      match surface, environment with
+      | Wall, Castle ->
+        if (cell.Cell.col + cell.row) % castle_banner_stride = 0
+        then
+          add_all
+            (Sprites.banner ~x ~y ~size:cpx ~color:Palette.hud_accent)
+      | Wall, (Forest | Cave)
+      | Trees, (Forest | Castle | Cave)
+      | Road, (Forest | Castle | Cave) -> ()
     done
   done;
   (* feature overlays *)
   List.iter features ~f:(draw_feature ~add ~cam ~cell_px:cpx);
+  (* a rune crystal glimmers on any ice patch in view *)
+  List.iter features ~f:(fun feature ->
+    match feature.Feature.payload with
+    | Feature.Payload.Ice_patch _ ->
+      (match feature.Feature.cells with
+       | [] -> ()
+       | cell :: _ ->
+         let x, y = Camera.cell_origin_px cam cell in
+         add_all (Sprites.rune_crystal ~x ~y ~size:cpx))
+    | Feature.Payload.Bridge _
+    | Feature.Payload.Gate _
+    | Feature.Payload.Stalactite _ -> ());
   (* cars, local driver's on top *)
   let cars =
     List.stable_sort cars ~compare:(fun a b ->

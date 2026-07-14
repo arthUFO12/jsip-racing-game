@@ -256,31 +256,42 @@ let draw_car ~add ~cam ~(car : Car_view.t) =
   let cx, cy = Camera.world_px cam car.position in
   let size = Camera.cell_px cam in
   let r = Int.max 3 (size / 3) in
+  let rf = Float.of_int r in
   let { Velocity.heading; speed = _ } = car.velocity in
   let theta = Heading.to_radians heading in
   let livery = Palette.team car.team in
+  let pt lx ly = rotate ~cx ~cy ~theta (lx, ly) in
+  let off = Int.max 1 (r / 4) in
+  (* contact shadow, down-right of the disc *)
+  add
+    (Fill_ellipse
+       { x = cx + off; y = cy - off; rx = r; ry = r; color = Palette.car_shadow });
+  (* the co-pilot's own driver wears a bright ring *)
   if car.is_own_driver
   then
     add
       (Fill_ellipse
-         { x = cx
-         ; y = cy
-         ; rx = r + 2
-         ; ry = r + 2
-         ; color = Palette.hud_title
-         });
-  add (Fill_ellipse { x = cx; y = cy; rx = r; ry = r; color = livery });
-  let len = Float.of_int (r + (size / 2)) in
-  let ex = cx + Float.iround_nearest_exn (len *. Float.cos theta) in
-  let ey = cy + Float.iround_nearest_exn (len *. Float.sin theta) in
+         { x = cx; y = cy; rx = r + 2; ry = r + 2; color = Palette.hud_accent });
+  (* a nose triangle points where the car is heading — clearer than a stick *)
   add
-    (Line
-       { x1 = cx
-       ; y1 = cy
-       ; x2 = ex
-       ; y2 = ey
-       ; width = 2
-       ; color = Color.darken livery ~frac:0.3
+    (Fill_poly
+       { points =
+           [| pt (rf *. 1.8) 0.
+            ; pt (rf *. 0.3) (rf *. 0.85)
+            ; pt (rf *. 0.3) (-.rf *. 0.85)
+           |]
+       ; color = Color.darken livery ~frac:0.28
+       });
+  add (Fill_ellipse { x = cx; y = cy; rx = r; ry = r; color = livery });
+  (* a top-left glint gives the disc a little roundness *)
+  let g = Int.max 1 (r / 3) in
+  add
+    (Fill_ellipse
+       { x = cx - g
+       ; y = cy + g
+       ; rx = g
+       ; ry = g
+       ; color = Color.lighten livery ~frac:0.3
        })
 ;;
 
@@ -393,18 +404,43 @@ let feature_line (feature : Feature.t) =
   sprintf "%s: %s" kind phase
 ;;
 
-let draw_panel ~add ~(frame : Frame.t) ~px ~py ~pw ~ph =
+(* The one panel look, mirroring {!Jsip_client_render.Render.panel}: a soft
+   drop shadow down-right, lit top/left edges and shaded bottom/right edges
+   (light from the top-left), then a crisp border. *)
+let beveled_panel ~add ~x ~y ~w ~h =
+  let hi = Color.lighten Palette.hud_panel ~frac:0.2 in
+  let lo = Color.darken Palette.hud_panel ~frac:0.3 in
+  add (Fill_rect { x = x + 3; y = y - 3; w; h; color = Palette.hud_shadow });
+  add (Fill_rect { x; y; w; h; color = Palette.hud_panel });
   add
-    (Fill_rect { x = px; y = py; w = pw; h = ph; color = Palette.hud_panel });
-  add (Rect { x = px; y = py; w = pw; h = ph; color = Palette.hud_border });
-  add
-    (Rect
-       { x = px + 1
-       ; y = py + 1
-       ; w = pw - 2
-       ; h = ph - 2
-       ; color = Color.lighten Palette.hud_panel ~frac:0.12
+    (Line
+       { x1 = x + 1
+       ; y1 = y + h - 1
+       ; x2 = x + w - 1
+       ; y2 = y + h - 1
+       ; width = 1
+       ; color = hi
        });
+  add
+    (Line
+       { x1 = x + 1; y1 = y + 1; x2 = x + 1; y2 = y + h - 1; width = 1; color = hi });
+  add
+    (Line
+       { x1 = x + 1; y1 = y + 1; x2 = x + w - 1; y2 = y + 1; width = 1; color = lo });
+  add
+    (Line
+       { x1 = x + w - 1
+       ; y1 = y + 1
+       ; x2 = x + w - 1
+       ; y2 = y + h - 1
+       ; width = 1
+       ; color = lo
+       });
+  add (Rect { x; y; w; h; color = Palette.hud_border })
+;;
+
+let draw_panel ~add ~(frame : Frame.t) ~px ~py ~pw ~ph =
+  beveled_panel ~add ~x:px ~y:py ~w:pw ~h:ph;
   let left = px + 14 in
   let top = py + ph - 14 in
   let line n = top - 14 - (n * line_h) in
@@ -544,6 +580,13 @@ let scene_of_frame (frame : Frame.t) =
         if Environment.is_dark environment
         then Color.mix base Palette.cave_shade ~frac:0.45
         else base
+      in
+      (* A faint checkerboard shading (no extra primitives) gives the flat
+         top-down tiles a woven, paved texture instead of one dead colour. *)
+      let base =
+        if (row + col) land 1 = 0
+        then Color.lighten base ~frac:0.035
+        else Color.darken base ~frac:0.035
       in
       add (Fill_rect { x; y; w = cpx; h = cpx; color = base })
     done

@@ -97,13 +97,13 @@ let%expect_test "console scene: primitive mix and panel copy" =
   List.filter_map scene ~f:text_of |> List.iter ~f:(printf "  %S\n");
   [%expect
     {|
-    primitives: 445
+    primitives: 455
 
-      Fill_ellipse x 4
-      Fill_poly    x 11
-      Fill_rect    x 396
-      Line         x 19
-      Rect         x 5
+      Fill_ellipse x 10
+      Fill_poly    x 14
+      Fill_rect    x 397
+      Line         x 20
+      Rect         x 4
       Text         x 10
 
     panel text:

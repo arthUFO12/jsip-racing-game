@@ -4,17 +4,17 @@
     expect-testable without ever opening a window — and a backend
     ({!Render.draw_frame} over OCaml [Graphics]) executes it.
 
-    Coordinates are y-up with the origin at the bottom-left, matching both the
-    [Graphics] window and {!Racing_types.Position}, so nothing downstream ever
-    flips an axis. Everything is integer pixels; the float world-to-pixel
-    conversion happens once, in {!Camera}. *)
+    Coordinates are y-up with the origin at the bottom-left, matching both
+    the [Graphics] window and {!Racing_types.Position}, so nothing downstream
+    ever flips an axis. Everything is integer pixels; the float
+    world-to-pixel conversion happens once, in {!Camera}. *)
 
 open! Core
 
 module Color : sig
   (** A packed [0xRRGGBB] color, bit-compatible with [Graphics.color] (so the
-      backend passes {!to_graphics} straight to [Graphics.set_color]). Renders
-      in sexps as [#rrggbb] to keep expect tests legible. *)
+      backend passes {!to_graphics} straight to [Graphics.set_color]).
+      Renders in sexps as [#rrggbb] to keep expect tests legible. *)
   type t [@@deriving compare, equal, sexp_of]
 
   (** Channels are clamped to [0 .. 255]. *)
@@ -22,8 +22,8 @@ module Color : sig
 
   val to_graphics : t -> int
 
-  (** Blend two colors: [mix a b ~frac:0.] is [a], [~frac:1.] is [b]. Used for
-      telegraph flashes (mix toward amber) and cave shading. *)
+  (** Blend two colors: [mix a b ~frac:0.] is [a], [~frac:1.] is [b]. Used
+      for telegraph flashes (mix toward amber) and cave shading. *)
   val mix : t -> t -> frac:float -> t
 
   (** [mix] toward black / toward white — shorthands for shadows and shine. *)

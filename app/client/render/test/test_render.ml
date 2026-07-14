@@ -76,7 +76,8 @@ let viewport : Map_state.Viewport.t =
         ; payload =
             Feature.Payload.Bridge
               { Feature.Bridge.phase =
-                  Feature.Bridge.Phase.Collapsed { rebuilt_at = Tick.of_int 100 }
+                  Feature.Bridge.Phase.Collapsed
+                    { rebuilt_at = Tick.of_int 100 }
               }
         }
       ]

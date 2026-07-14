@@ -1,0 +1,6 @@
+(library
+ (name jsip_client)
+ (public_name jsip-racing-game.jsip_client)
+ (libraries core graphics time_now)
+ (preprocess
+  (pps ppx_jane)))

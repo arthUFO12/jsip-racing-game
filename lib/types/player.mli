@@ -1,3 +1,3 @@
-
-
-type t = Copilot |  Driver 
+type t =
+  | Copilot
+  | Driver

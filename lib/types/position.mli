@@ -16,11 +16,7 @@ type t =
   { x : float
   ; y : float
   }
-<<<<<<< HEAD
-[@@deriving bin_io, compare, equal, sexp_of]
-=======
 [@@deriving bin_io, compare, equal, sexp]
->>>>>>> cd3f968a7f763b5f38e500e305fd081afaed675c
 
 val origin : t
 val add : t -> t -> t

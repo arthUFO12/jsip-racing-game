@@ -188,7 +188,13 @@ starts at rest: `Intact`/`Open`/`Hanging`).
    ((kind Gate) (cells (((col 6) (row 3))))))))
 ```
 
-(Illustrative, hand-typed — don't trust it as a validated map.)
+(Illustrative, hand-typed — don't trust it as a validated map. The real,
+validated example is **`maps/castle_run.sexp`**: a 26×15 counterclockwise
+circuit — start/finish in the castle's right corridor, a gorge bridge in
+the top corridor with a one-cell ledge detour, a forked forest descent
+with a gate on the inner lane, and a cave corridor with a stalactite that
+always leaves one lane open. `lib/map/test/test_game_map.ml` loads and
+summarizes it in expect tests.)
 
 Yes, drawing a big grid in sexp atoms is clunky; the upside is the parser
 is `[@@deriving of_sexp]` on an internal `Spec` type plus validation, with
@@ -202,13 +208,15 @@ collect **all** errors, not just the first):
 
 - grids rectangular, nonempty, same dimensions;
 - checkpoint indexes exactly `0..n-1`, `n >= 2`, cells on `Road`;
-- each checkpoint BFS-reachable from the previous over non-solid cells
-  **with every gate closed and every bridge collapsed simultaneously**
-  (gaps impassable) — the strictest single check, and it makes
-  "sabotage can never brick the lap" true forever;
+- each checkpoint BFS-reachable from the previous (and checkpoint 1 from
+  every start slot) over non-solid cells **with every gate closed, every
+  bridge collapsed, and every stalactite fallen simultaneously** — the
+  strictest single check, and it makes "sabotage can never brick the
+  lap" true forever;
 - start slots on `Road`;
 - feature footprints nonempty, non-overlapping, on `Road`; stalactites
-  only over `Cave` cells.
+  only over `Cave` cells; ice patches cannot be authored (they are
+  spawned in play only).
 
 ## Module map
 
@@ -224,18 +232,12 @@ map_state (game_map + everything; Update + Viewport submodules)
 racing_map (re-exports the lot; `open Racing_map` where convenient)
 ```
 
-Implementation status:
-
-| Real today | Stubbed (`failwith "TODO: ..."`) |
-|---|---|
-| `Tick`, `Vec2`, `Pose`, `Cell` (incl. `of_vec2`/`center`/`in_radius`) | `Game_map.load` (spec parse + validation) |
-| `Surface`, `Environment`, `Feature_id` | `Checkpoint.Progress.on_touch` |
-| `Feature` (payloads, `kind`, `surface_override`, `is_gap`, `traction_multiplier`) | `Map_state.apply_action`, `tick`, `melt_ice` |
-| `Game_map` accessors (`base_surface_at` etc.) | `Map_state.surface_at`, `is_blocked`, `is_gap`, `traction_at`, `features_near` |
-| `Map_state.create`, `apply_update`, `feature`, `features` | `Map_state.viewport` |
-
-Each stub carries an "expected shape" comment describing the intended
-implementation.
+Implementation status: **everything is implemented** — the former stubs
+(`Game_map.load` + validation, `Checkpoint.Progress.on_touch`, all of
+`Map_state`'s transitions and composed queries, `viewport`) are real and
+covered by the expect tests in `lib/map/test/`. Gameplay tuning constants
+(telegraph/outage/melt durations at 30 ticks/s, ice radius) sit at the
+top of `map_state.ml`, marked provisional until a config module exists.
 
 ## Rendering notes (OCaml `graphics`)
 
@@ -253,7 +255,8 @@ implementation.
   client-side from `phase` + `expiry - now` (the snapshot carries the
   current tick).
 
-## Test plan (once stubs are implemented)
+## Test plan (implemented in `lib/map/test/` — test_checkpoint,
+test_game_map, test_map_state)
 
 - `Progress.on_touch`: a table-style expect test walking a 3-checkpoint
   lap — advance, ignore wrong/backwards touches, complete a lap.
@@ -289,9 +292,14 @@ implementation.
 7. Stalactite impact on cars: stun (~2s) vs. damage (stun).
 8. Co-pilot's view: whole map vs. enlarged window (whole map — seeing
    ahead is their job; use the base-map blit).
-9. Should `Tick`/`Vec2`/`Pose` migrate to `lib/types` (`Racing_types`)
-   once the protocol types land there? (Yes — they are game-wide
-   vocabulary; `racing_map` would then depend on `racing_types`.)
+9. Unify with `Racing_types`, which landed after this design was written:
+   it now has its own `Tick` (no `bin_io`, no `add`) and a `Position`
+   that duplicates `Vec2`; its `Interference` doc explicitly waits for
+   track-model ids. (Suggested: `racing_map` adopts
+   `Racing_types.{Tick,Position}` once `bin_io`/`add` are added there,
+   and `Interference` grows map-targeting constructors embedding
+   `Track_action.t` — a small coordinated follow-up PR, deliberately not
+   done under deadline.)
 10. Map delivery at join: `join_game_rpc` response vs. a dedicated
     `get_map_rpc` (dedicated RPC — reconnecting clients can refetch
     without rejoining).

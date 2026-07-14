@@ -18,15 +18,15 @@ let%expect_test "ground palette covers every surface x environment" =
         (Palette.ground ~surface ~environment)));
   [%expect
     {|
-    Forest  Road   -> #b88e5c
-    Forest  Wall   -> #6b645e
-    Forest  Trees  -> #3d6b2f
-    Castle  Road   -> #9c9692
-    Castle  Wall   -> #686270
-    Castle  Trees  -> #46603a
-    Cave    Road   -> #5c5662
-    Cave    Wall   -> #2d2a36
-    Cave    Trees  -> #2e442a
+    Forest  Road   -> #b69264
+    Forest  Wall   -> #7c766c
+    Forest  Trees  -> #4c723e
+    Castle  Road   -> #a29e98
+    Castle  Wall   -> #747080
+    Castle  Trees  -> #4e6842
+    Cave    Road   -> #625c6a
+    Cave    Wall   -> #2e2c38
+    Cave    Trees  -> #364e32
     |}]
 ;;
 
@@ -138,12 +138,13 @@ let%expect_test "scene has the expected primitive mix and HUD copy" =
   List.filter_map scene ~f:text_of |> List.iter ~f:(printf "  %S\n");
   [%expect
     {|
-    primitives: 51
+    primitives: 79
 
-      Fill_ellipse x 11
-      Fill_poly    x 6
-      Fill_rect    x 15
-      Rect         x 14
+      Fill_ellipse x 15
+      Fill_poly    x 8
+      Fill_rect    x 19
+      Line         x 27
+      Rect         x 5
       Text         x 5
 
     HUD text:

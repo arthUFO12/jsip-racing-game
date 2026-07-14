@@ -60,16 +60,16 @@ let%expect_test "countdown: number ring, then GO!" =
   report (Hud.countdown ~count:0 ~window_w:640 ~window_h:480);
   [%expect
     {|
-    primitives: 4
-      Fill_ellipse x 2
+    primitives: 5
+      Fill_ellipse x 3
       Fill_rect    x 1
       Text         x 1
     text:
       "3"
 
     --- GO ---
-    primitives: 4
-      Fill_ellipse x 2
+    primitives: 5
+      Fill_ellipse x 3
       Fill_rect    x 1
       Text         x 1
     text:
@@ -111,9 +111,10 @@ let%expect_test "finish_board: sorted rows, winner highlighted, ordinals" =
   report (Hud.finish_board ordinal_probe ~window_w:640 ~window_h:480);
   [%expect
     {|
-    primitives: 29
+    primitives: 31
       Fill_rect    x 7
-      Rect         x 6
+      Line         x 1
+      Rect         x 7
       Text         x 16
     text:
       "FINISH"
@@ -147,8 +148,9 @@ let%expect_test "leaderboard: compact rows, name truncated" =
   report (Hud.leaderboard with_long_name ~x:20 ~y:400);
   [%expect
     {|
-    primitives: 22
-      Fill_rect    x 5
+    primitives: 27
+      Fill_rect    x 6
+      Line         x 4
       Rect         x 5
       Text         x 12
     text:
@@ -177,10 +179,10 @@ let%expect_test "inventory_bar: one tile per powerup, distinct glyphs" =
     (Hud.inventory_bar (List.map Powerup.all ~f:(fun p -> p, 1)) ~x:0 ~y:0);
   [%expect
     {|
-    primitives: 16
+    primitives: 25
       Fill_poly    x 2
-      Fill_rect    x 3
-      Line         x 5
+      Fill_rect    x 6
+      Line         x 11
       Rect         x 3
       Text         x 3
     text:
@@ -189,10 +191,10 @@ let%expect_test "inventory_bar: one tile per powerup, distinct glyphs" =
       "x1"
 
     --- all six powerups (glyph coverage) ---
-    primitives: 29
+    primitives: 47
       Fill_poly    x 5
-      Fill_rect    x 7
-      Line         x 5
+      Fill_rect    x 13
+      Line         x 17
       Rect         x 6
       Text         x 6
     text:
@@ -219,8 +221,9 @@ let%expect_test "effect_chips: coloured by kind, integer seconds" =
   report (Hud.effect_chips effects ~x:20 ~y:60);
   [%expect
     {|
-    primitives: 9
+    primitives: 12
       Fill_rect    x 3
+      Line         x 3
       Rect         x 3
       Text         x 3
     text:

@@ -1,4 +1,5 @@
 open! Core
+open Racing_types
 
 module Bridge = struct
   module Phase = struct

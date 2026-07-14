@@ -469,6 +469,39 @@ let draw_panel ~add ~(frame : Frame.t) ~px ~py ~pw ~ph =
          }))
 ;;
 
+(* --- camera / hit-testing ---
+
+   The map is drawn in the left region (inside the bezel, left of the panel).
+   [camera_of_frame] is the single source of that layout, so {!cell_at_px}
+   (click -> cell) and {!scene_of_frame} (cell -> pixels) can never disagree. *)
+
+let camera_of_frame (frame : Frame.t) =
+  let panel_x = frame.window_w - bezel_px - panel_w in
+  let area_x = bezel_px in
+  let area_y = bezel_px in
+  let area_w = panel_x - panel_gap - bezel_px in
+  let area_h = frame.window_h - (2 * bezel_px) in
+  let cols = Game_map.cols frame.game_map in
+  let rows = Game_map.rows frame.game_map in
+  Camera.create
+    ~origin:{ Cell.col = 0; row = 0 }
+    ~cells:(Int.max 1 (Int.max cols rows))
+    ~cell_size:(Game_map.cell_size frame.game_map)
+    ~area_x
+    ~area_y
+    ~area_w
+    ~area_h
+;;
+
+let cell_at_px (frame : Frame.t) ~x ~y =
+  let cell = Camera.cell_of_px (camera_of_frame frame) ~x ~y in
+  let cols = Game_map.cols frame.game_map in
+  let rows = Game_map.rows frame.game_map in
+  if cell.Cell.col >= 0 && cell.col < cols && cell.row >= 0 && cell.row < rows
+  then Some cell
+  else None
+;;
+
 (* --- scene assembly --- *)
 
 let scene_of_frame (frame : Frame.t) =
@@ -492,16 +525,7 @@ let scene_of_frame (frame : Frame.t) =
   let cols = Game_map.cols game_map in
   let rows = Game_map.rows game_map in
   let cell_size = Game_map.cell_size game_map in
-  let cam =
-    Camera.create
-      ~origin:{ Cell.col = 0; row = 0 }
-      ~cells:(Int.max 1 (Int.max cols rows))
-      ~cell_size
-      ~area_x
-      ~area_y
-      ~area_w
-      ~area_h
-  in
+  let cam = camera_of_frame frame in
   let cpx = Camera.cell_px cam in
   (* terrain: one composed fill per cell, darkened in the caves *)
   for row = 0 to rows - 1 do

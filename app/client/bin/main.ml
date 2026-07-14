@@ -1,23 +1,26 @@
 open! Core
 open! Async
 open Racing_types
+open Racing_map
 open Racing_gateway
 
-(* The interactive racing client: connect to the authoritative server, take a
-   seat, then run a render/input loop. Two one-way flows meet here — snapshots
-   stream in from the server and drive what we draw; local WASD input streams
-   out as [Driver_input.t]. The client holds no game state of its own: every
-   frame is built fresh from the newest snapshot (see rpc_protocol.mli). *)
+(* The interactive racing client. Two roles share one connection and event
+   loop but see different screens: a [Driver] gets the close-up driving view
+   and steers with WASD; a [Track_player] gets the whole-map console and
+   sabotages by clicking the track. Snapshots stream in and drive what we draw;
+   the client keeps no game state of its own — every frame is rebuilt from the
+   newest snapshot (see rpc_protocol.mli). *)
 
 module Connection = Jsip_client.Connection
 module Controls = Jsip_client.Controls
 module Client_frame = Jsip_client.Client_frame
+module Track_console = Jsip_client.Track_console
 module Input = Jsip_client.Input
 module Render = Jsip_client_render.Render
+module Track_view = Jsip_client_track_view.Track_view
 
-(* Redraw at 60 Hz regardless of the server's 30 tick/s snapshot rate, so
-   input feels responsive and held keys are polled often enough for
-   {!Input.is_pressed} to track them (see input.mli on auto-repeat). *)
+(* Redraw at 60 Hz regardless of the server's 30 tick/s snapshots, so input
+   stays responsive and held steer keys are polled often (see input.mli). *)
 let frame_span = Time_ns.Span.of_sec (1. /. 60.)
 
 (* Number keys 1..6 select inventory slots 1..6 — one per {!Powerup.t}. *)
@@ -29,40 +32,22 @@ let role_arg =
     | "driver" -> Role.Driver
     | "track" | "track-player" | "track_player" -> Role.Track_player
     | other ->
-      raise_s [%message "role must be 'driver' or 'track-player'" (other : string)])
+      raise_s
+        [%message "role must be 'driver' or 'track-player'" (other : string)])
 ;;
 
-(* Which car the camera follows: a driver watches their own car; a track
-   player rides along with their team's driver (their whole-map console is a
-   separate view, still being built). [None] until that car exists. *)
-let camera_player_id ~role ~self_id ~team (snapshot : Rpc_protocol.Game_snapshot.t)
-  =
-  match (role : Role.t) with
-  | Driver -> Some self_id
-  | Track_player ->
-    List.find_map snapshot.players ~f:(fun (info : Rpc_protocol.Player_info.t) ->
-      match info.role with
-      | Driver when Team_id.equal info.team team -> Some info.player.id
-      | Driver | Track_player -> None)
+(* Poll [latest] until [build] can make a frame, yielding between tries. Lets
+   us size and open the [Graphics] window before the first {!Input.poll}. *)
+let rec wait_for_frame ~latest ~build =
+  match Option.bind !latest ~f:build with
+  | Some frame -> return frame
+  | None ->
+    let%bind () = Clock_ns.after frame_span in
+    wait_for_frame ~latest ~build
 ;;
 
-let frame_of snapshot ~map ~role ~self_id ~team ~window_w ~window_h =
-  match camera_player_id ~role ~self_id ~team snapshot with
-  | None -> None
-  | Some camera_player_id ->
-    Client_frame.of_snapshot
-      ~map
-      ~snapshot
-      ~camera_player_id
-      ~self_id
-      ~window_w
-      ~window_h
-;;
-
-(* A driver spends the powerup in a slot; a track player grants it to their
-   own driver — both are targeting-free, so the number row works for either
-   role. (Track-targeted sabotage — collapsing bridges, dropping stalactites —
-   needs the whole-map view to aim, so it is not wired here yet.) *)
+(* A driver spends the powerup in a slot; a track player grants it to their own
+   driver — both are targeting-free, so the number row serves either role. *)
 let handle_digit session ~role ~self_id ~latest digit =
   match !latest with
   | None -> ()
@@ -82,35 +67,94 @@ let handle_digit session ~role ~self_id ~latest digit =
           | Error error -> eprintf !"item rejected: %{Error#hum}\n%!" error))
 ;;
 
-(* Read snapshots until we can build a frame, so we can size and open the
-   window before the first {!Input.poll} (which [Graphics] requires). Records
-   the newest snapshot into [latest] as it goes. *)
-let rec wait_for_first_frame
+(* One 60 Hz loop that exits cleanly when the window is closed. [tick] runs
+   after each successful {!Input.poll}. *)
+let run_loop input ~tick =
+  Clock_ns.every frame_span (fun () ->
+    try
+      Input.poll input;
+      tick ()
+    with
+    | Graphics.Graphic_failure _ -> shutdown 0);
+  Deferred.never ()
+;;
+
+(* ---- driver: close-up view, WASD ---- *)
+
+let run_driver session input ~map ~self_id ~latest ~window_w ~window_h =
+  let build snapshot =
+    Client_frame.of_snapshot
+      ~map
+      ~snapshot
+      ~camera_player_id:self_id
+      ~self_id
+      ~window_w
+      ~window_h
+  in
+  let%bind first = wait_for_frame ~latest ~build in
+  Render.open_window first;
+  let driver = Controls.Driver.create input in
+  let last_sent = ref Driver_input.idle in
+  run_loop input ~tick:(fun () ->
+    let intent = Controls.Driver.input driver in
+    if not (Driver_input.equal intent !last_sent)
+    then (
+      Connection.send_driver_input session intent;
+      last_sent := intent);
+    match Option.bind !latest ~f:build with
+    | None -> ()
+    | Some frame -> Render.draw_frame frame)
+;;
+
+(* ---- track player: whole-map console, click to sabotage ---- *)
+
+let run_track_player
   session
+  input
   ~map
-  ~role
   ~self_id
   ~team
+  ~latest
   ~window_w
   ~window_h
-  ~latest
   =
-  match%bind Pipe.read (Connection.snapshots session) with
-  | `Eof -> return None
-  | `Ok snapshot ->
-    latest := Some snapshot;
-    (match frame_of snapshot ~map ~role ~self_id ~team ~window_w ~window_h with
-     | Some frame -> return (Some frame)
-     | None ->
-       wait_for_first_frame
-         session
-         ~map
-         ~role
-         ~self_id
-         ~team
-         ~window_w
-         ~window_h
-         ~latest)
+  let selected = ref None in
+  let build snapshot =
+    Track_console.frame_of_snapshot
+      ~map
+      ~snapshot
+      ~my_id:self_id
+      ~my_team:team
+      ~selected:!selected
+      ~window_w
+      ~window_h
+  in
+  let%bind first = wait_for_frame ~latest ~build:(fun s -> Some (build s)) in
+  Track_view.open_window first;
+  (* A click picks a cell: sabotage the feature there, or drop ice on open
+     road. The server has the last word on whether it is legal. *)
+  Input.on_click input ~f:(fun ~x ~y ->
+    match !latest with
+    | None -> ()
+    | Some (snapshot : Rpc_protocol.Game_snapshot.t) ->
+      (match Track_view.cell_at_px (build snapshot) ~x ~y with
+       | None -> ()
+       | Some cell ->
+         selected := Some cell;
+         (match
+            Track_console.sabotage_of_cell ~track:snapshot.track ~map ~cell
+          with
+          | None -> ()
+          | Some sabotage ->
+            don't_wait_for
+              (match%map Connection.use_sabotage session sabotage with
+               | Ok () -> ()
+               | Error error ->
+                 eprintf !"sabotage rejected: %{Error#hum}\n%!" error))));
+  run_loop input ~tick:(fun () ->
+    match !latest with
+    | None -> ()
+    | Some snapshot -> Track_view.draw_frame (build snapshot))
 ;;
 
 let run ~host ~port ~name ~team ~role ~window_w ~window_h =
@@ -123,61 +167,32 @@ let run ~host ~port ~name ~team ~role ~window_w ~window_h =
     let self_id = Connection.player_id session in
     let latest : Rpc_protocol.Game_snapshot.t option ref = ref None in
     printf
-      !"joined %s as %{sexp:Role.t} (player %{sexp:Player_id.t}); waiting for \
-        the first snapshot...\n\
-        %!"
-      (Racing_map.Game_map.name map)
+      !"joined %s as %{sexp:Role.t} (player %{sexp:Player_id.t})\n%!"
+      (Game_map.name map)
       role
       self_id;
-    (match%bind
-       wait_for_first_frame
+    (* The pipe reader keeps [latest] fresh; the loops read the newest and drop
+       stale (the server already skips old snapshots for slow readers). *)
+    don't_wait_for
+      (Pipe.iter_without_pushback (Connection.snapshots session) ~f:(fun s ->
+         latest := Some s));
+    let input = Input.create () in
+    List.iter powerup_digits ~f:(fun digit ->
+      Input.on_keypress input (Input.Key.Digit digit) ~f:(fun () ->
+        handle_digit session ~role ~self_id ~latest digit));
+    (match (role : Role.t) with
+     | Driver ->
+       run_driver session input ~map ~self_id ~latest ~window_w ~window_h
+     | Track_player ->
+       run_track_player
          session
+         input
          ~map
-         ~role
          ~self_id
          ~team
-         ~window_w
-         ~window_h
          ~latest
-     with
-     | None ->
-       eprintf "server closed the feed before any frame was ready\n%!";
-       return ()
-     | Some first_frame ->
-       Render.open_window first_frame;
-       (* From here the pipe reader just keeps [latest] fresh; the render loop
-          reads it. A dropped snapshot costs nothing — the next supersedes it. *)
-       don't_wait_for
-         (Pipe.iter_without_pushback (Connection.snapshots session) ~f:(fun s ->
-            latest := Some s));
-       let input = Input.create () in
-       List.iter powerup_digits ~f:(fun digit ->
-         Input.on_keypress input (Input.Key.Digit digit) ~f:(fun () ->
-           handle_digit session ~role ~self_id ~latest digit));
-       let last_sent = ref Driver_input.idle in
-       Clock_ns.every frame_span (fun () ->
-         match Input.poll input with
-         | exception Graphics.Graphic_failure _ ->
-           (* The window was closed — leave the game. *)
-           shutdown 0
-         | () ->
-           (match (role : Role.t) with
-            | Track_player -> ()
-            | Driver ->
-              let intent = Controls.driver_input input in
-              if not (Driver_input.equal intent !last_sent)
-              then (
-                Connection.send_driver_input session intent;
-                last_sent := intent));
-           (match !latest with
-            | None -> ()
-            | Some snapshot ->
-              (match
-                 frame_of snapshot ~map ~role ~self_id ~team ~window_w ~window_h
-               with
-               | None -> ()
-               | Some frame -> Render.draw_frame frame)));
-       Deferred.never ())
+         ~window_w
+         ~window_h)
 ;;
 
 let command =

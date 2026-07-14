@@ -60,6 +60,11 @@ end
     space. *)
 val scene_of_frame : Frame.t -> Prim.t list
 
+(** Which map cell a window pixel falls in, or [None] when the click is on the
+    control panel, the bezel, or otherwise off the grid. The client turns a
+    co-pilot's click into a sabotage target with this. *)
+val cell_at_px : Frame.t -> x:int -> y:int -> Cell.t option
+
 (** Open the [Graphics] window sized to the frame, double-buffered. Call once
     before {!draw_frame}. *)
 val open_window : Frame.t -> unit

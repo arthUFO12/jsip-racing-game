@@ -4,8 +4,8 @@
     caller, so this module never sees the map itself ("the map states facts
     and physics owns consequences" — [lib/map/surface.mli]).
 
-    The tuning constants are exposed so clients can render honestly (a
-    boost gauge, a speedometer scaled to [max_speed]) and tests can compute
+    The tuning constants are exposed so clients can render honestly (a boost
+    gauge, a speedometer scaled to [max_speed]) and tests can compute
     expected values. Anti-tunneling constraint from [doc/map-design.md]: a
     car must never cross more than ~one cell per tick, so keep [max_speed]
     (times any boost) safely below [cell_size * Game_state.ticks_per_second]
@@ -16,19 +16,26 @@ open Racing_types
 
 (** {2 Tuning constants} *)
 
-val max_speed : float (** world units per second, unboosted ceiling *)
+(** world units per second, unboosted ceiling *)
+val max_speed : float
 
-val acceleration : float (** u/s² while holding accelerate *)
+(** u/s² while holding accelerate *)
+val acceleration : float
 
-val brake_deceleration : float (** u/s² while holding brake *)
+(** u/s² while holding brake *)
+val brake_deceleration : float
 
-val drag_deceleration : float (** u/s² while coasting, keys released *)
+(** u/s² while coasting, keys released *)
+val drag_deceleration : float
 
-val turn_rate : float (** radians per second at full steer *)
+(** radians per second at full steer *)
+val turn_rate : float
 
-val speed_boost_multiplier : float (** scales [max_speed] under Speed_boost *)
+(** scales [max_speed] under Speed_boost *)
+val speed_boost_multiplier : float
 
-val vines_speed_multiplier : float (** scales [max_speed] under Vines *)
+(** scales [max_speed] under Vines *)
+val vines_speed_multiplier : float
 
 (** {2 The step} *)
 
@@ -42,8 +49,8 @@ val next_heading
   -> Heading.t
 
 (** How fast the car moves after [dt] of this input, given what's acting on
-    the car: [effect_kinds] are its active effects (speed boost, vines —
-    see {!Racing_types.Effect.Kind}), [traction] is
+    the car: [effect_kinds] are its active effects (speed boost, vines — see
+    {!Racing_types.Effect.Kind}), [traction] is
     {!Racing_map.Map_state.traction_at} under the car ([1.0] on clean road,
     [< 1.0] on ice). Never negative and never above the effective ceiling —
     reversing is a flipped heading, not a negative speed ({!Speed}). *)
@@ -56,8 +63,8 @@ val next_speed
   -> Speed.t
 
 (** One tick of motion: turn, change speed, advance, and stop dead at solid
-    terrain ([is_solid] sampled at the destination — v1 collision is
-    "bonk": position stays, speed zeroes, heading keeps). *)
+    terrain ([is_solid] sampled at the destination — v1 collision is "bonk":
+    position stays, speed zeroes, heading keeps). *)
 val step
   :  position:Position.t
   -> velocity:Velocity.t

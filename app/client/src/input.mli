@@ -53,19 +53,13 @@ val poll : t -> unit
 (** [is_pressed t key] reports whether [key] is currently held down.
 
     [Graphics] delivers no key-release events, so held-state is synthesized
-    from OS key auto-repeat: a key counts as pressed while repeated press
-    events keep arriving, and as released once none has arrived for
-    {!auto_repeat_timeout}. Two consequences to design around: releases are
-    observed up to that timeout late (a quick tap reads as a short hold), and
-    X11 auto-repeats only the most recently pressed key, so holding two keys
-    at once (say [W] + [A] to accelerate while steering) keeps only the
-    newest one pressed.
+    from OS key auto-repeat: a fresh press counts as held long enough to span
+    the OS delay before repeats begin, and each repeat re-arms a short window,
+    so a release registers within a frame or two rather than lingering. Since
+    X auto-repeats only the most-recently pressed key, a steering key ([A]/[D])
+    also keeps an already-held throttle key ([W]/[S]) alive briefly — so
+    accelerating and steering at the same time works.
 
-    Only meaningful if {!poll} runs every frame — that's what refreshes the
-    underlying press timestamps. *)
+    Only meaningful if {!poll} runs every frame — that is what refreshes the
+    underlying press timing. *)
 val is_pressed : t -> Key.t -> bool
-
-(** How long after the last press event a key is still considered held. Must
-    exceed the OS auto-repeat initial delay (typically 300-500ms), or held
-    keys flicker "released" between the first press and the first repeat. *)
-val auto_repeat_timeout : Time_ns.Span.t

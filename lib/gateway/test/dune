@@ -1,0 +1,6 @@
+(library
+ (name racing_gateway_test)
+ (libraries core racing_types racing_map racing_gateway async_rpc_kernel)
+ (inline_tests)
+ (preprocess
+  (pps ppx_jane)))

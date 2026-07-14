@@ -1,0 +1,5 @@
+(executable
+ (name main)
+ (libraries racing_gateway racing_map async core core_unix.command_unix)
+ (preprocess
+  (pps ppx_jane)))

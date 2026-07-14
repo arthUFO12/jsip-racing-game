@@ -1,5 +1,6 @@
-(** The driver's-eye screen: a close-up, car-centered slice of the track drawn
-    in the fantasy look of {!Palette}, with a warm HUD bar across the top.
+(** The driver's-eye screen: a close-up, car-centered slice of the track
+    drawn in the fantasy look of {!Palette}, with a warm HUD bar across the
+    top.
 
     The design is deliberately split so most of it is pure and testable:
 
@@ -12,8 +13,7 @@
 
     Cars arrive as {!Car.t}, a {e render-side} view (position, facing, team,
     active effects) rather than a shared domain [Car.t] — the track model
-    hasn't defined one yet, and rendering shouldn't be what forces its
-    shape. *)
+    hasn't defined one yet, and rendering shouldn't be what forces its shape. *)
 
 open! Core
 open Racing_map
@@ -34,10 +34,10 @@ end
 
 module Frame : sig
   (** Everything one frame needs. [viewport] is the terrain slice
-      ({!Racing_map.Map_state.viewport}); [cars] are the visible cars in world
-      coordinates (the local driver plus any rivals in view). The rest is HUD
-      copy — whichever of [place] / [time_elapsed] is [Some] is shown on the
-      right. *)
+      ({!Racing_map.Map_state.viewport}); [cars] are the visible cars in
+      world coordinates (the local driver plus any rivals in view). The rest
+      is HUD copy — whichever of [place] / [time_elapsed] is [Some] is shown
+      on the right. *)
   type t =
     { viewport : Map_state.Viewport.t
     ; cell_size : float

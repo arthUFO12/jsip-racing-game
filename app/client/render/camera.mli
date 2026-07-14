@@ -1,10 +1,10 @@
-(** Maps the driver's viewport — a square block of grid cells around their car
-    — onto a pixel rectangle of the window, with square cells. This is the
-    only module that touches the float-world-to-int-pixel conversion; drawing
-    code works entirely in the pixels it hands back.
+(** Maps the driver's viewport — a square block of grid cells around their
+    car — onto a pixel rectangle of the window, with square cells. This is
+    the only module that touches the float-world-to-int-pixel conversion;
+    drawing code works entirely in the pixels it hands back.
 
-    Both spaces are y-up (see {!Prim}), so a larger grid row is a larger pixel
-    [y] — no axis flip. *)
+    Both spaces are y-up (see {!Prim}), so a larger grid row is a larger
+    pixel [y] — no axis flip. *)
 
 open! Core
 open Racing_map
@@ -16,7 +16,8 @@ type t
     pixel area [(area_x, area_y, area_w, area_h)]. Cells are squared to
     [min area_w area_h / cells] and the resulting grid is centered in the
     area, so a non-square area just gets letterboxed rather than stretched.
-    [cell_size] is the map's world-units-per-cell ({!Racing_map.Game_map.cell_size}). *)
+    [cell_size] is the map's world-units-per-cell
+    ({!Racing_map.Game_map.cell_size}). *)
 val create
   :  origin:Cell.t
   -> cells:int

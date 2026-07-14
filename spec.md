@@ -23,9 +23,8 @@ involves:
 The driver can only see a small part of the track at one time, so they
 depend on their copilot's warnings.
 
-The first team whose driver crosses the finish line wins.
-
-- **[OPEN]** How many teams race at once? Is there a minimum/maximum?
+The first team whose driver crosses the finish line wins. A race supports
+up to 7 teams, no more.
 
 ### B. Which specializations does your project cover?
 

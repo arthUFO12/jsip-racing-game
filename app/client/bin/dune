@@ -1,14 +1,14 @@
-(library
- (name jsip_client)
- (public_name jsip-racing-game.jsip_client)
+(executable
+ (name main)
  (libraries
   core
   async
   graphics
-  time_now
+  jsip_client
+  jsip_client_render
   racing_types
   racing_map
   racing_gateway
-  jsip_client_render)
+  core_unix.command_unix)
  (preprocess
   (pps ppx_jane)))

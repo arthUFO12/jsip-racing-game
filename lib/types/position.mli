@@ -11,6 +11,6 @@ type t =
   { x : float
   ; y : float
   }
-[@@deriving compare, equal, sexp_of]
+[@@deriving bin_io, compare, equal, sexp_of]
 
 val origin : t

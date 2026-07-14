@@ -12,4 +12,4 @@ type t =
   { id : Player_id.t (** server-assigned; see {!Player_id} *)
   ; name : Player_name.t (** display only; not necessarily unique *)
   }
-[@@deriving compare, equal, sexp_of]
+[@@deriving bin_io, compare, equal, sexp_of]

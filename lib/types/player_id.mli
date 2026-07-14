@@ -17,9 +17,9 @@ open! Core
       ;;
     ]} *)
 
-type t [@@deriving hash, sexp]
+type t [@@deriving bin_io, hash, sexp]
 
-include Comparable.S with type t := t
+include Comparable.S_binable with type t := t
 include Hashable.S with type t := t
 
 (** [of_int] exists for the server-side id allocator and for tests. Clients

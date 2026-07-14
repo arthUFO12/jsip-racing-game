@@ -8,7 +8,7 @@ open! Core
       Tick.( < ) Tick.zero (Tick.next Tick.zero) (* true *)
     ]} *)
 
-type t [@@deriving hash, sexp]
+type t [@@deriving bin_io, hash, sexp]
 
 include Comparable.S with type t := t
 

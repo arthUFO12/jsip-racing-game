@@ -6,14 +6,16 @@ open! Core
 
     The record is [private]: read fields and pattern-match freely, but the
     only way to build one is {!create}, which checks the one thing the shape
-    can't — that the two slots hold two different players. *)
+    can't — that the two slots hold two different players. ([bin_io]
+    decodes without re-running {!create}; it exists to push teams to
+    clients in snapshots, and the sender is the server that built them.) *)
 
 type t = private
   { id : Team_id.t
   ; driver : Player.t
   ; track_player : Player.t
   }
-[@@deriving compare, equal, sexp_of]
+[@@deriving bin_io, compare, equal, sexp_of]
 
 (** Errors if [driver] and [track_player] share a {!Player_id.t}. *)
 val create

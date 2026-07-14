@@ -4,4 +4,4 @@ type t =
   | Countdown
   | Racing
   | Finished
-[@@deriving compare, enumerate, equal, sexp_of]
+[@@deriving bin_io, compare, enumerate, equal, sexp_of]

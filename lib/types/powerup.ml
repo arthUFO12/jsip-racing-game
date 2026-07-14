@@ -8,7 +8,7 @@ module T = struct
     | Flame_magic
     | Flashlight
     | Axe
-  [@@deriving compare, enumerate, equal, hash, sexp]
+  [@@deriving bin_io, compare, enumerate, equal, hash, sexp]
 end
 
 include T

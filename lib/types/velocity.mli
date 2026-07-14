@@ -14,7 +14,7 @@ type t =
   { heading : Heading.t
   ; speed : Speed.t
   }
-[@@deriving compare, equal, sexp_of]
+[@@deriving bin_io, compare, equal, sexp_of]
 
 (** Parked, facing [facing]. *)
 val stationary : facing:Heading.t -> t

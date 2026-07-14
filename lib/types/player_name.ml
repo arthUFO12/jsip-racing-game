@@ -1,6 +1,6 @@
 open! Core
 
-type t = string [@@deriving compare, equal, sexp_of]
+type t = string [@@deriving bin_io, compare, equal, sexp_of]
 
 let max_length = 16
 

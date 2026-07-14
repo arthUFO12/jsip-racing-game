@@ -1,7 +1,7 @@
 open! Core
 
 module T = struct
-  type t = int [@@deriving compare, equal, hash, sexp]
+  type t = int [@@deriving bin_io, compare, equal, hash, sexp]
 end
 
 include T

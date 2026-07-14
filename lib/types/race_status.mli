@@ -9,4 +9,4 @@ type t =
   | Countdown (** everyone's in; cars locked until the green light *)
   | Racing
   | Finished
-[@@deriving compare, enumerate, equal, sexp_of]
+[@@deriving bin_io, compare, enumerate, equal, sexp_of]

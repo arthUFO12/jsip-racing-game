@@ -4,7 +4,7 @@ open! Core
     construction — "going backwards" is a flipped {!Heading.t}, not a
     negative speed, so the sign ambiguity never exists. *)
 
-type t [@@deriving compare, equal, sexp_of]
+type t [@@deriving bin_io, compare, equal, sexp_of]
 
 val zero : t
 

@@ -1,0 +1,6 @@
+(library
+ (name jsip_client_render_test)
+ (libraries core racing_map racing_types jsip_client_render)
+ (inline_tests)
+ (preprocess
+  (pps ppx_jane)))

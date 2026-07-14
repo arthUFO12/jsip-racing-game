@@ -5,9 +5,8 @@
     {!Game_map.base_surface_at} is the static layer underneath.
 
     The map states facts and physics owns consequences: nothing here knows
-    about cars, gliders, or crashes. There is deliberately no slow or
-    deadly ground in v1 — hazards are dynamic features ({!Feature}), not
-    surfaces. *)
+    about cars, gliders, or crashes. There is deliberately no slow or deadly
+    ground in v1 — hazards are dynamic features ({!Feature}), not surfaces. *)
 
 open! Core
 
